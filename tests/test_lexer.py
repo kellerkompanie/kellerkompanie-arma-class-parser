@@ -129,11 +129,11 @@ class Foo {};'''
         self.assertEqual(tokens, expected)
 
     def test_file_sample01(self):
-        with open("../examples/01_simple_config.cpp", 'r') as fp:
+        with open("examples/01_simple_config.cpp", 'r') as fp:
             input_data = fp.read()
         Lexer(input_data).tokenize()
 
     def test_file_sample02(self):
-        with open("../examples/02_acex_rations_config.cpp", 'r') as fp:
+        with open("examples/02_acex_rations_config.cpp", 'r') as fp:
             input_data = fp.read()
         Lexer(input_data).tokenize()
