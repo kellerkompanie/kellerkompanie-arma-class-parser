@@ -70,14 +70,14 @@ class Lexer:
     def __init__(self, input_data):
         self.input = input_data
         self.length = len(input_data)
-        self.position = -1
+        self.position = 0
         self.line_no = 1
         self.line_pos = 0
         self.tokens = []
         self.char = None
 
     def has_next(self):
-        return self.position < self.length - 1
+        return self.position < self.length
 
     def next(self):
         if not self.has_next():
@@ -88,16 +88,15 @@ class Lexer:
             self.line_pos = 0
 
         self.position += 1
-        self.char = self.input[self.position]
+        self.char = self.input[self.position - 1]
         self.line_pos += 1
 
         return self.char
 
-    def peek(self):
-        if self.has_next():
-            return self.input[self.position + 1]
-        else:
-            return None
+    def peek(self, length=1):
+        start = max(0, self.position)
+        end = min(self.position + length, self.length)
+        return self.input[start:end]
 
     def add_token(self, token_type, value=None):
         line_no = self.line_no
@@ -107,14 +106,15 @@ class Lexer:
             line_pos -= 1
         elif token_type in [Literal.NUMBER_LITERAL, Literal.STRING_LITERAL]:
             line_pos -= len(value) - 1
-        elif token_type in [Keyword.CLASS, Keyword.INCLUDE]:
-            line_pos -= len(token_type.value) - 1
+        elif token_type == Keyword.CLASS:
+            line_pos -= len('class') - 1
+        elif token_type == Keyword.INCLUDE:
+            line_pos -= len('#include') - 1
 
         token = Token(token_type, line_no, line_pos, value)
         self.tokens.append(token)
 
     def tokenize(self):
-        tokens = []
         while self.has_next():
             next_char = self.next()
 
@@ -172,7 +172,12 @@ class Lexer:
                     self.add_token(Symbol.MULT)
 
             elif next_char == '#':
-                self.add_token(Symbol.HASH)
+                if self.peek(7) == 'include':
+                    for i in range(0, 7):
+                        self.next()
+                    self.add_token(Keyword.INCLUDE)
+                else:
+                    self.add_token(Symbol.HASH)
 
             elif next_char == '/':
                 peeked_char = self.peek()
@@ -227,14 +232,14 @@ class Lexer:
                     else:
                         break
 
-                if string_literal == 'include':
-                    self.add_token(Keyword.INCLUDE)
-                elif string_literal == 'class':
+                if string_literal == 'class':
                     self.add_token(Keyword.CLASS)
                 else:
                     self.add_token(Literal.STRING_LITERAL, string_literal)
 
             else:
-                print("unknown symbol:", next_char)
+                raise ValueError('unknown symbol {} encountered at line {}, column {}'.format(next_char,
+                                                                                              self.line_no,
+                                                                                              self.line_pos))
 
         return self.tokens
