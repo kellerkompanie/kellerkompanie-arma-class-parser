@@ -1,12 +1,9 @@
 from enum import Enum
 
-
-class Literal(Enum):
-    STRING_LITERAL = 'STRING'
-    NUMBER_LITERAL = 'NUMBER'
+STRING_INPUT_FILE = '<STRING>'
 
 
-class Symbol(Enum):
+class TokenType(Enum):
     L_CURLY = '{'
     R_CURLY = '}'
     L_ROUND = '('
@@ -20,6 +17,9 @@ class Symbol(Enum):
     MINUS = '-'
     MUL = '*'
     DIV = '/'
+    BACKSLASH = '\\'
+    LESS = '<'
+    GREATER = '>'
     HASH = '#'
     COMMENT = '//'
     MCOMMENT_START = '/*'
@@ -30,28 +30,28 @@ class Symbol(Enum):
     QUOTE = "'"
     DOUBLE_QUOTES = '"'
     COMMA = ','
-
-
-class Keyword(Enum):
-    CLASS = 'class'
-    INCLUDE = 'include'
+    KEYWORD_CLASS = 'class'
+    KEYWORD_INCLUDE = 'include'
+    STRING_LITERAL = 'STRING'
+    NUMBER_LITERAL = 'NUMBER'
 
 
 class Token:
-    def __init__(self, token_type, line_no, line_pos, value=None):
+    def __init__(self, token_type, file_name, line_no, line_pos, value=None):
         self.token_type = token_type
+        self.file_name = file_name
         self.line_no = line_no
         self.line_pos = line_pos
         self.value = value
 
     def __repr__(self):
-        if self.token_type in [Literal.STRING_LITERAL, Literal.NUMBER_LITERAL]:
+        if self.token_type in [TokenType.STRING_LITERAL, TokenType.NUMBER_LITERAL]:
             return '<line: %s, pos: %s, %s(%s)>' % (self.line_no, self.line_pos, self.token_type, self.value)
         else:
             return '<line: %s, pos: %s, %s>' % (self.line_no, self.line_pos, self.token_type)
 
     def __str__(self):
-        if self.token_type in [Literal.STRING_LITERAL, Literal.NUMBER_LITERAL]:
+        if self.token_type in [TokenType.STRING_LITERAL, TokenType.NUMBER_LITERAL]:
             return self.value
         else:
             return '%s' % self.token_type.value
@@ -67,9 +67,10 @@ class Token:
 
 
 class Lexer:
-    def __init__(self, input_data):
+    def __init__(self, input_data, file_name):
         self.input = input_data
         self.length = len(input_data)
+        self.file_name = file_name
         self.position = 0
         self.line_no = 1
         self.line_pos = 0
@@ -102,16 +103,16 @@ class Lexer:
         line_no = self.line_no
         line_pos = self.line_pos
 
-        if token_type in [Symbol.MCOMMENT_START, Symbol.MCOMMENT_END, Symbol.COMMENT]:
+        if token_type in [TokenType.MCOMMENT_START, TokenType.MCOMMENT_END, TokenType.COMMENT]:
             line_pos -= 1
-        elif token_type in [Literal.NUMBER_LITERAL, Literal.STRING_LITERAL]:
+        elif token_type in [TokenType.NUMBER_LITERAL, TokenType.STRING_LITERAL]:
             line_pos -= len(value) - 1
-        elif token_type == Keyword.CLASS:
+        elif token_type == TokenType.KEYWORD_CLASS:
             line_pos -= len('class') - 1
-        elif token_type == Keyword.INCLUDE:
+        elif token_type == TokenType.KEYWORD_INCLUDE:
             line_pos -= len('#include') - 1
 
-        token = Token(token_type, line_no, line_pos, value)
+        token = Token(token_type, self.file_name, line_no, line_pos, value)
         self.tokens.append(token)
 
     def tokenize(self):
@@ -119,34 +120,43 @@ class Lexer:
             next_char = self.next()
 
             if next_char == '{':
-                self.add_token(Symbol.L_CURLY)
+                self.add_token(TokenType.L_CURLY)
 
             elif next_char == '}':
-                self.add_token(Symbol.R_CURLY)
+                self.add_token(TokenType.R_CURLY)
 
             elif next_char == '(':
-                self.add_token(Symbol.L_ROUND)
+                self.add_token(TokenType.L_ROUND)
 
             elif next_char == ')':
-                self.add_token(Symbol.R_ROUND)
+                self.add_token(TokenType.R_ROUND)
 
             elif next_char == '[':
-                self.add_token(Symbol.L_SQUARE)
+                self.add_token(TokenType.L_SQUARE)
 
             elif next_char == ']':
-                self.add_token(Symbol.R_SQUARE)
+                self.add_token(TokenType.R_SQUARE)
 
             elif next_char == ';':
-                self.add_token(Symbol.SEMICOLON)
+                self.add_token(TokenType.SEMICOLON)
 
             elif next_char == ':':
-                self.add_token(Symbol.COLON)
+                self.add_token(TokenType.COLON)
 
             elif next_char == '=':
-                self.add_token(Symbol.EQUALS)
+                self.add_token(TokenType.EQUALS)
 
             elif next_char == '+':
-                self.add_token(Symbol.PLUS)
+                self.add_token(TokenType.PLUS)
+
+            elif next_char == '\\':
+                self.add_token(TokenType.BACKSLASH)
+
+            elif next_char == '<':
+                self.add_token(TokenType.LESS)
+
+            elif next_char == '>':
+                self.add_token(TokenType.GREATER)
 
             elif next_char == '-':
                 peeked_char = self.peek()
@@ -158,58 +168,58 @@ class Lexer:
                             number_literal += self.next()
                         else:
                             break
-                    self.add_token(Literal.NUMBER_LITERAL, number_literal)
+                    self.add_token(TokenType.NUMBER_LITERAL, number_literal)
                 else:
-                    self.add_token(Symbol.MINUS)
+                    self.add_token(TokenType.MINUS)
 
             elif next_char == '*':
                 peeked_char = self.peek()
                 if peeked_char == "/":
                     # case: */
-                    self.add_token(Symbol.MCOMMENT_END)
+                    self.add_token(TokenType.MCOMMENT_END)
                     self.next()
                 else:
-                    self.add_token(Symbol.MULT)
+                    self.add_token(TokenType.MULT)
 
             elif next_char == '#':
                 if self.peek(7) == 'include':
                     for i in range(0, 7):
                         self.next()
-                    self.add_token(Keyword.INCLUDE)
+                    self.add_token(TokenType.KEYWORD_INCLUDE)
                 else:
-                    self.add_token(Symbol.HASH)
+                    self.add_token(TokenType.HASH)
 
             elif next_char == '/':
                 peeked_char = self.peek()
                 if peeked_char == '/':
                     # case: //
-                    self.add_token(Symbol.COMMENT)
+                    self.add_token(TokenType.COMMENT)
                     self.next()
                 elif peeked_char == '*':
                     # case: /*
-                    self.add_token(Symbol.MCOMMENT_START)
+                    self.add_token(TokenType.MCOMMENT_START)
                     self.next()
                 else:
                     # case: /
-                    self.add_token(Symbol.DIV)
+                    self.add_token(TokenType.DIV)
 
             elif next_char == '\n':
-                self.add_token(Symbol.NEWLINE)
+                self.add_token(TokenType.NEWLINE)
 
             elif next_char == '\t':
-                self.add_token(Symbol.TAB)
+                self.add_token(TokenType.TAB)
 
             elif next_char == ' ':
-                self.add_token(Symbol.WHITESPACE)
+                self.add_token(TokenType.WHITESPACE)
 
             elif next_char == '"':
-                self.add_token(Symbol.DOUBLE_QUOTES)
+                self.add_token(TokenType.DOUBLE_QUOTES)
 
             elif next_char == "'":
-                self.add_token(Symbol.QUOTE)
+                self.add_token(TokenType.QUOTE)
 
             elif next_char == ",":
-                self.add_token(Symbol.COMMA)
+                self.add_token(TokenType.COMMA)
 
             elif next_char.isdecimal():
                 # parse number
@@ -220,7 +230,7 @@ class Lexer:
                         number_literal += self.next()
                     else:
                         break
-                self.add_token(Literal.NUMBER_LITERAL, number_literal)
+                self.add_token(TokenType.NUMBER_LITERAL, number_literal)
 
             elif next_char.isalpha():
                 # parse letters and numbers
@@ -233,9 +243,9 @@ class Lexer:
                         break
 
                 if string_literal == 'class':
-                    self.add_token(Keyword.CLASS)
+                    self.add_token(TokenType.KEYWORD_CLASS)
                 else:
-                    self.add_token(Literal.STRING_LITERAL, string_literal)
+                    self.add_token(TokenType.STRING_LITERAL, string_literal)
 
             else:
                 raise ValueError('unknown symbol {} encountered at line {}, column {}'.format(next_char,
