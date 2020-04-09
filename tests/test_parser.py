@@ -123,16 +123,18 @@ class TestParser(unittest.TestCase):
 
     def test_file_sample01(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        with open(os.path.join(dir_path, "examples/01_simple_config.cpp"), 'r') as fp:
+        file_path = os.path.join(dir_path, "examples/01_simple_config.cpp")
+        with open(file_path, 'r') as fp:
             input_data = fp.read()
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
+        tokens = Lexer(input_data, file_path).tokenize()
         parser = Parser(tokens)
         parser.parse()
 
     def test_file_sample02(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        with open(os.path.join(dir_path, "examples/02_acex_rations_config.cpp"), 'r') as fp:
+        file_path = os.path.join(dir_path, "examples/02_acex_rations_config.cpp")
+        with open(file_path, 'r') as fp:
             input_data = fp.read()
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
+        tokens = Lexer(input_data, file_path).tokenize()
         parser = Parser(tokens)
         parser.parse()
