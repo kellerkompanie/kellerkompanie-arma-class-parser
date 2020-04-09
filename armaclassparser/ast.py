@@ -15,13 +15,13 @@ class ASTNodeType(Enum):
 
 class ASTNode:
     def __init__(self, node_type: ASTNodeType, tokens: list, line_no: int, line_pos: int):
-        if not node_type:
+        if node_type is None:
             raise TypeError('parameter node_type cannot be None')
-        if not tokens:
+        if tokens is None:
             raise TypeError('parameter tokens cannot be None')
-        if not line_no:
+        if line_no is None:
             raise TypeError('parameter line_no cannot be None')
-        if not line_pos:
+        if line_pos is None:
             raise TypeError('parameter line_pos cannot be None')
         if len(tokens) == 0:
             raise ValueError('parameter tokens cannot be empty')
@@ -56,7 +56,7 @@ class StringLiteral(ASTNode):
 
 class Constant(ASTNode):
     def __init__(self, number_token: Token):
-        if not number_token:
+        if number_token is None:
             raise TypeError('parameter number_token cannot be None')
         if number_token.token_type != TokenType.NUMBER_LITERAL:
             raise ValueError('parameter number_token must be of type {}'.format(TokenType.NUMBER_LITERAL))
@@ -70,7 +70,7 @@ class Constant(ASTNode):
 
 class Identifier(ASTNode):
     def __init__(self, name_token: Token):
-        if not name_token:
+        if name_token is None:
             raise TypeError('parameter name_token cannot be None')
         if name_token.token_type != TokenType.STRING_LITERAL:
             raise ValueError('parameter name_token must be of type {}'.format(TokenType.STRING_LITERAL))
@@ -85,11 +85,11 @@ class Identifier(ASTNode):
 
 class ArrayDeclaration(ASTNode):
     def __init__(self, identifier: Identifier, left_bracket_token: Token, right_bracket_token: Token):
-        if not identifier:
+        if identifier is None:
             raise TypeError('parameter identifier cannot be None')
-        if not left_bracket_token:
+        if left_bracket_token is None:
             raise TypeError('parameter left_bracket_token cannot be None')
-        if not left_bracket_token:
+        if left_bracket_token is None:
             raise TypeError('parameter right_bracket_token cannot be None')
         if left_bracket_token.token_type != TokenType.L_SQUARE:
             raise ValueError('parameter left_bracket_token must be of type {}'.format(TokenType.L_SQUARE))
@@ -107,11 +107,11 @@ class ArrayDeclaration(ASTNode):
 
 class Array(ASTNode):
     def __init__(self, left_curly_token: Token, children: list, right_curly_token: Token):
-        if not left_curly_token:
+        if left_curly_token is None:
             raise TypeError('parameter left_curly_token cannot be None')
-        if not children:
+        if children is None:
             raise TypeError('parameter children cannot be None')
-        if not right_curly_token:
+        if right_curly_token is None:
             raise TypeError('parameter right_curly_token cannot be None')
         if left_curly_token.token_type != TokenType.L_CURLY:
             raise ValueError('parameter left_curly_token must be of type {}'.format(TokenType.L_CURLY))
@@ -134,13 +134,13 @@ class Array(ASTNode):
 
 class Assignment(ASTNode):
     def __init__(self, left: ASTNode, equals_token: Token, right: ASTNode, semicolon_token: Token):
-        if not left:
+        if left is None:
             raise TypeError('parameter left cannot be None')
-        if not equals_token:
+        if equals_token is None:
             raise TypeError('parameter equals_token cannot be None')
-        if not right:
+        if right is None:
             raise TypeError('parameter right cannot be None')
-        if not semicolon_token:
+        if semicolon_token is None:
             raise TypeError('parameter semicolon_token cannot be None')
         if equals_token.token_type != TokenType.EQUALS:
             raise ValueError('parameter equals_token must be of type {}'.format(TokenType.EQUALS))

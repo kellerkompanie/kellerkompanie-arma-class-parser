@@ -1,3 +1,4 @@
+import sys
 from parser import ParserError
 from typing import Union
 
@@ -38,9 +39,7 @@ class Parser:
         return Constant(number_literal_token)
 
     def _parse_identifier(self):
-        name_token = self.token()
-        if name_token.token_type != TokenType.STRING_LITERAL:
-            raise armaclassparser.UnexpectedTokenError(TokenType.STRING_LITERAL, name_token)
+        name_token = self.expect(TokenType.STRING_LITERAL)
         self.index += 1
         return Identifier(name_token)
 
@@ -144,17 +143,24 @@ class Parser:
             self.next()
             self._parse_skip_whitespaces()
             parent_class_token = self.token()
+            self.next()
             self._parse_skip_whitespaces()
 
-        if token.token_type == TokenType.L_CURLY:
-            l_curly_token = token
-            token = self.next()
-            body = []
-            while token.token_type != TokenType.R_CURLY and self.index < len(self.tokens):
-                body.append(self.parse())
-                token = self.next()
+        if self.token().token_type == TokenType.L_CURLY:
+            l_curly_token = self.token()
+            self.next()
 
-            if token.token_type == TokenType.R_CURLY:
+            previous_stack = self.stack
+            self.stack = []
+            while self.token().token_type != TokenType.R_CURLY and self.index < len(self.tokens):
+                child = self._parse_next()
+                if child is not None:
+                    self.stack.append(child)
+
+            body = self.stack
+            self.stack = previous_stack
+
+            if self.token().token_type == TokenType.R_CURLY:
                 colon_token = self.next()
                 if colon_token.token_type != TokenType.SEMICOLON:
                     raise armaclassparser.UnexpectedTokenError(TokenType.SEMICOLON, colon_token)
@@ -163,7 +169,7 @@ class Parser:
             else:
                 raise armaclassparser.MissingTokenError(TokenType.R_CURLY, l_curly_token)
         else:
-            raise armaclassparser.UnexpectedTokenError(TokenType.L_CURLY, token)
+            raise armaclassparser.UnexpectedTokenError(TokenType.L_CURLY, self.token())
 
     def _parse_skip_whitespaces(self, include_newlines=False):
         skip_tokens = [TokenType.WHITESPACE, TokenType.TAB] + ([TokenType.NEWLINE] if include_newlines else [])
@@ -194,36 +200,39 @@ class Parser:
         self.expect(token_type)
         return self.token()
 
+    def _parse_next(self):
+        token = self.token()
+        if token.token_type in [TokenType.DOUBLE_QUOTES, TokenType.QUOTE]:
+            return self._parse_string_literal()
+        elif token.token_type == TokenType.KEYWORD_INCLUDE:
+            return self._parse_include_statement()
+        elif token.token_type == TokenType.KEYWORD_CLASS:
+            return self._parse_class_definition()
+        elif token.token_type in [TokenType.NEWLINE, TokenType.TAB]:
+            self.index += 1
+            return None
+        elif token.token_type == TokenType.STRING_LITERAL:
+            return self._parse_identifier()
+        elif token.token_type == TokenType.L_SQUARE:
+            return self._parse_array_declaration()
+        elif token.token_type == TokenType.L_CURLY:
+            return self._parse_array()
+        elif token.token_type == TokenType.EQUALS:
+            return self._parse_assignment()
+        elif token.token_type in [TokenType.WHITESPACE, TokenType.TAB, TokenType.NEWLINE]:
+            self.index += 1
+            return None
+        elif token.token_type in [TokenType.COMMENT, TokenType.MCOMMENT_START, TokenType.MCOMMENT_END]:
+            raise armaclassparser.ParsingError('expected comments to be handled by preprocessor')
+        else:
+            print('WARNING: unknown token:', repr(token), file=sys.stderr)
+            self.index += 1
+            return None
+
     def parse(self):
         while self.index < len(self.tokens):
-            token = self.token()
-
-            if token.token_type in [TokenType.DOUBLE_QUOTES, TokenType.QUOTE]:
-                ast_node = self._parse_string_literal()
+            ast_node = self._parse_next()
+            if ast_node is not None:
                 self.stack.append(ast_node)
-            elif token.token_type == TokenType.KEYWORD_INCLUDE:
-                ast_node = self._parse_include_statement()
-                self.stack.append(ast_node)
-            elif token.token_type == TokenType.KEYWORD_CLASS:
-                ast_node = self._parse_class_definition()
-                self.stack.append(ast_node)
-            elif token.token_type in [TokenType.NEWLINE, TokenType.TAB]:
-                self.index += 1
-            elif token.token_type == TokenType.STRING_LITERAL:
-                ast_node = self._parse_identifier()
-                self.stack.append(ast_node)
-            elif token.token_type == TokenType.L_SQUARE:
-                ast_node = self._parse_array_declaration()
-                self.stack.append(ast_node)
-            elif token.token_type == TokenType.EQUALS:
-                ast_node = self._parse_assignment()
-                self.stack.append(ast_node)
-            elif token.token_type in [TokenType.WHITESPACE, TokenType.TAB, TokenType.NEWLINE]:
-                self.index += 1
-            elif token.token_type in [TokenType.COMMENT, TokenType.MCOMMENT_START, TokenType.MCOMMENT_END]:
-                raise armaclassparser.ParsingError('expected comments to be handled by preprocessor')
-            else:
-                print('unknown token:', repr(token))
-                self.index += 1
 
         return self.stack
