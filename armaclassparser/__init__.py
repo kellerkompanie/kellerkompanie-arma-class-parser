@@ -1,5 +1,4 @@
-import armaclassparser.lexer
-from armaclassparser import generator
+from armaclassparser import generator, lexer
 
 
 class ParsingError(Exception):
