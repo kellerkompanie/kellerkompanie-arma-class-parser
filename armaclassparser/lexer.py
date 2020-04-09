@@ -32,6 +32,12 @@ class TokenType(Enum):
     COMMA = ','
     KEYWORD_CLASS = 'class'
     KEYWORD_INCLUDE = 'include'
+    KEYWORD_IFDEF = 'ifdef'
+    KEYWORD_IFNDEF = 'ifndef'
+    KEYWORD_ELSE = 'else'
+    KEYWORD_ENDIF = 'endif'
+    KEYWORD_DEFINE = 'define'
+    KEYWORD_UNDEF = 'undef'
     STRING_LITERAL = 'STRING'
     NUMBER_LITERAL = 'NUMBER'
 
@@ -111,6 +117,18 @@ class Lexer:
             line_pos -= len('class') - 1
         elif token_type == TokenType.KEYWORD_INCLUDE:
             line_pos -= len('#include') - 1
+        elif token_type == TokenType.KEYWORD_IFDEF:
+            line_pos -= len('#ifdef') - 1
+        elif token_type == TokenType.KEYWORD_IFNDEF:
+            line_pos -= len('#ifndef') - 1
+        elif token_type == TokenType.KEYWORD_ELSE:
+            line_pos -= len('#else') - 1
+        elif token_type == TokenType.KEYWORD_ENDIF:
+            line_pos -= len('#endif') - 1
+        elif token_type == TokenType.KEYWORD_DEFINE:
+            line_pos -= len('#define') - 1
+        elif token_type == TokenType.KEYWORD_UNDEF:
+            line_pos -= len('#undef') - 1
 
         token = Token(token_type, self.file_name, line_no, line_pos, value)
         self.tokens.append(token)
@@ -182,11 +200,20 @@ class Lexer:
                     self.add_token(TokenType.MULT)
 
             elif next_char == '#':
-                if self.peek(7) == 'include':
-                    for i in range(0, 7):
-                        self.next()
-                    self.add_token(TokenType.KEYWORD_INCLUDE)
-                else:
+                peek = self.peek(7)
+
+                found_keyword = False
+                for keyword in [TokenType.KEYWORD_INCLUDE, TokenType.KEYWORD_IFDEF, TokenType.KEYWORD_IFNDEF,
+                                TokenType.KEYWORD_ELSE, TokenType.KEYWORD_ENDIF, TokenType.KEYWORD_DEFINE,
+                                TokenType.KEYWORD_UNDEF]:
+                    if peek.startswith(keyword.value):
+                        for i in range(0, len(keyword.value)):
+                            self.next()
+                        self.add_token(keyword)
+                        found_keyword = True
+                        break
+
+                if not found_keyword:
                     self.add_token(TokenType.HASH)
 
             elif next_char == '/':
