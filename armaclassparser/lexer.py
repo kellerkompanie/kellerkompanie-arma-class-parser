@@ -30,24 +30,33 @@ class TokenType(Enum):
     QUOTE = "'"
     DOUBLE_QUOTES = '"'
     COMMA = ','
+    DOLLAR = '$'
+    EXCLAMATION = '!'
+    UNDERSCORE = '_'
+    DOT = '.'
+    AND = '&'
+    PERCENT = '%'
+    QUESTION = '?'
     KEYWORD_CLASS = 'class'
-    KEYWORD_INCLUDE = 'include'
-    KEYWORD_IFDEF = 'ifdef'
-    KEYWORD_IFNDEF = 'ifndef'
-    KEYWORD_ELSE = 'else'
-    KEYWORD_ENDIF = 'endif'
-    KEYWORD_DEFINE = 'define'
-    KEYWORD_UNDEF = 'undef'
+    KEYWORD_INCLUDE = '#include'
+    KEYWORD_IFDEF = '#ifdef'
+    KEYWORD_IFNDEF = '#ifndef'
+    KEYWORD_ELSE = '#else'
+    KEYWORD_ENDIF = '#endif'
+    KEYWORD_DEFINE = '#define'
+    KEYWORD_UNDEF = '#undef'
     STRING_LITERAL = 'STRING'
     NUMBER_LITERAL = 'NUMBER'
 
 
 class Token:
-    def __init__(self, token_type, file_name, line_no, line_pos, value=None):
+    def __init__(self, token_type, file_path, line_no, line_pos, value=None):
         self.token_type = token_type
-        self.file_name = file_name
+        self.file_path = file_path
         self.line_no = line_no
         self.line_pos = line_pos
+        if value is None:
+            value = token_type.value
         self.value = value
 
     def __repr__(self):
@@ -113,70 +122,21 @@ class Lexer:
             line_pos -= 1
         elif token_type in [TokenType.NUMBER_LITERAL, TokenType.STRING_LITERAL]:
             line_pos -= len(value) - 1
-        elif token_type == TokenType.KEYWORD_CLASS:
-            line_pos -= len('class') - 1
-        elif token_type == TokenType.KEYWORD_INCLUDE:
-            line_pos -= len('#include') - 1
-        elif token_type == TokenType.KEYWORD_IFDEF:
-            line_pos -= len('#ifdef') - 1
-        elif token_type == TokenType.KEYWORD_IFNDEF:
-            line_pos -= len('#ifndef') - 1
-        elif token_type == TokenType.KEYWORD_ELSE:
-            line_pos -= len('#else') - 1
-        elif token_type == TokenType.KEYWORD_ENDIF:
-            line_pos -= len('#endif') - 1
-        elif token_type == TokenType.KEYWORD_DEFINE:
-            line_pos -= len('#define') - 1
-        elif token_type == TokenType.KEYWORD_UNDEF:
-            line_pos -= len('#undef') - 1
+        elif token_type in [TokenType.KEYWORD_CLASS, TokenType.KEYWORD_INCLUDE, TokenType.KEYWORD_IFDEF,
+                            TokenType.KEYWORD_IFNDEF, TokenType.KEYWORD_ELSE, TokenType.KEYWORD_ENDIF,
+                            TokenType.KEYWORD_DEFINE, TokenType.KEYWORD_UNDEF]:
+            line_pos -= len(token_type.value) - 1
 
         token = Token(token_type, self.file_name, line_no, line_pos, value)
         self.tokens.append(token)
 
     def tokenize(self):
+        token_type_values = [token_type.value for token_type in TokenType]
+
         while self.has_next():
             next_char = self.next()
 
-            if next_char == '{':
-                self.add_token(TokenType.L_CURLY)
-
-            elif next_char == '}':
-                self.add_token(TokenType.R_CURLY)
-
-            elif next_char == '(':
-                self.add_token(TokenType.L_ROUND)
-
-            elif next_char == ')':
-                self.add_token(TokenType.R_ROUND)
-
-            elif next_char == '[':
-                self.add_token(TokenType.L_SQUARE)
-
-            elif next_char == ']':
-                self.add_token(TokenType.R_SQUARE)
-
-            elif next_char == ';':
-                self.add_token(TokenType.SEMICOLON)
-
-            elif next_char == ':':
-                self.add_token(TokenType.COLON)
-
-            elif next_char == '=':
-                self.add_token(TokenType.EQUALS)
-
-            elif next_char == '+':
-                self.add_token(TokenType.PLUS)
-
-            elif next_char == '\\':
-                self.add_token(TokenType.BACKSLASH)
-
-            elif next_char == '<':
-                self.add_token(TokenType.LESS)
-
-            elif next_char == '>':
-                self.add_token(TokenType.GREATER)
-
-            elif next_char == '-':
+            if next_char == '-':
                 peeked_char = self.peek()
                 if peeked_char.isdecimal():
                     number_literal = next_char
@@ -197,17 +157,17 @@ class Lexer:
                     self.add_token(TokenType.MCOMMENT_END)
                     self.next()
                 else:
-                    self.add_token(TokenType.MULT)
+                    self.add_token(TokenType.MUL)
 
             elif next_char == '#':
-                peek = self.peek(7)
+                peek = '#' + self.peek(7)
 
                 found_keyword = False
                 for keyword in [TokenType.KEYWORD_INCLUDE, TokenType.KEYWORD_IFDEF, TokenType.KEYWORD_IFNDEF,
                                 TokenType.KEYWORD_ELSE, TokenType.KEYWORD_ENDIF, TokenType.KEYWORD_DEFINE,
                                 TokenType.KEYWORD_UNDEF]:
                     if peek.startswith(keyword.value):
-                        for i in range(0, len(keyword.value)):
+                        for i in range(0, len(keyword.value) - 1):
                             self.next()
                         self.add_token(keyword)
                         found_keyword = True
@@ -229,24 +189,6 @@ class Lexer:
                 else:
                     # case: /
                     self.add_token(TokenType.DIV)
-
-            elif next_char == '\n':
-                self.add_token(TokenType.NEWLINE)
-
-            elif next_char == '\t':
-                self.add_token(TokenType.TAB)
-
-            elif next_char == ' ':
-                self.add_token(TokenType.WHITESPACE)
-
-            elif next_char == '"':
-                self.add_token(TokenType.DOUBLE_QUOTES)
-
-            elif next_char == "'":
-                self.add_token(TokenType.QUOTE)
-
-            elif next_char == ",":
-                self.add_token(TokenType.COMMA)
 
             elif next_char.isdecimal():
                 # parse number
@@ -275,8 +217,13 @@ class Lexer:
                     self.add_token(TokenType.STRING_LITERAL, string_literal)
 
             else:
-                raise ValueError('unknown symbol {} encountered at line {}, column {}'.format(next_char,
-                                                                                              self.line_no,
-                                                                                              self.line_pos))
+                if next_char in token_type_values:
+                    self.add_token(TokenType(next_char))
+                    continue
+                else:
+                    raise ValueError('unknown symbol {} encountered in {} at line {}, column {}'.format(next_char,
+                                                                                                        self.file_name,
+                                                                                                        self.line_no,
+                                                                                                        self.line_pos))
 
         return self.tokens

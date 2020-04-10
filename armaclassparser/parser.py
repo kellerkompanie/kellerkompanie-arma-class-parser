@@ -3,15 +3,44 @@ from parser import ParserError
 from typing import Union
 
 import armaclassparser
-from armaclassparser.ast import StringLiteral, Constant, Identifier, ArrayDeclaration, Assignment, IncludeStatement, \
-    ClassDefinition, Array
+from armaclassparser.ast import StringLiteral, Constant, Identifier, ArrayDeclaration, Assignment, ClassDefinition, \
+    Array
 from armaclassparser.lexer import TokenType, Token
 
 
-class Parser:
+class TokenProcessor:
     def __init__(self, tokens):
         self.tokens = tokens
         self.index = 0
+
+    def token(self) -> Token:
+        return self.tokens[self.index]
+
+    def next(self) -> Token:
+        self.index += 1
+        return self.token()
+
+    def has_next(self) -> bool:
+        return self.index < len(self.tokens) - 1
+
+    def expect(self, token_type: Union[TokenType, list]) -> Token:
+        if isinstance(token_type, TokenType):
+            if self.token().token_type != token_type:
+                raise armaclassparser.UnexpectedTokenError(token_type, self.token())
+        elif isinstance(token_type, list):
+            if self.token().token_type not in token_type:
+                raise armaclassparser.UnexpectedTokenError(token_type, self.token())
+        return self.token()
+
+    def expect_next(self, token_type: TokenType) -> Token:
+        self.next()
+        self.expect(token_type)
+        return self.token()
+
+
+class Parser(TokenProcessor):
+    def __init__(self, tokens):
+        TokenProcessor.__init__(self, tokens)
         self.stack = []
 
     def _parse_string_literal(self):
@@ -115,19 +144,6 @@ class Parser:
         self.index += 1
         return Array(l_curly_token, children, r_curly_token)
 
-    def _parse_include_statement(self):
-        include_token = self.tokens[self.index]
-        assert include_token.token_type == TokenType.KEYWORD_INCLUDE
-
-        self.index += 1
-        whitespace_token = self.tokens[self.index]
-        assert whitespace_token.token_type == TokenType.WHITESPACE
-
-        self.index += 1
-        string_literal = self._parse_string_literal()
-
-        return IncludeStatement(include_token, string_literal)
-
     def _parse_class_definition(self):
         class_keyword_token = self.expect(TokenType.KEYWORD_CLASS)
         self.next()
@@ -176,36 +192,10 @@ class Parser:
         while self.token().token_type in skip_tokens and self.index < len(self.tokens):
             self.next()
 
-    def token(self) -> Token:
-        return self.tokens[self.index]
-
-    def next(self) -> Token:
-        self.index += 1
-        return self.token()
-
-    def has_next(self) -> bool:
-        return self.index < len(self.tokens) - 1
-
-    def expect(self, token_type: Union[TokenType, list]) -> Token:
-        if isinstance(token_type, TokenType):
-            if self.token().token_type != token_type:
-                raise armaclassparser.UnexpectedTokenError(token_type, self.token())
-        elif isinstance(token_type, list):
-            if self.token().token_type not in token_type:
-                raise armaclassparser.UnexpectedTokenError(token_type, self.token())
-        return self.token()
-
-    def expect_next(self, token_type: TokenType) -> Token:
-        self.next()
-        self.expect(token_type)
-        return self.token()
-
     def _parse_next(self):
         token = self.token()
         if token.token_type in [TokenType.DOUBLE_QUOTES, TokenType.QUOTE]:
             return self._parse_string_literal()
-        elif token.token_type == TokenType.KEYWORD_INCLUDE:
-            return self._parse_include_statement()
         elif token.token_type == TokenType.KEYWORD_CLASS:
             return self._parse_class_definition()
         elif token.token_type in [TokenType.NEWLINE, TokenType.TAB]:
@@ -222,6 +212,8 @@ class Parser:
         elif token.token_type in [TokenType.WHITESPACE, TokenType.TAB, TokenType.NEWLINE]:
             self.index += 1
             return None
+        elif token.token_type == TokenType.KEYWORD_INCLUDE:
+            raise armaclassparser.ParsingError('expected includes to be handled by preprocessor')
         elif token.token_type in [TokenType.COMMENT, TokenType.MCOMMENT_START, TokenType.MCOMMENT_END]:
             raise armaclassparser.ParsingError('expected comments to be handled by preprocessor')
         else:

@@ -1,6 +1,10 @@
 from armaclassparser import generator, lexer
 
 
+class PreProcessingError(Exception):
+    pass
+
+
 class ParsingError(Exception):
     pass
 
