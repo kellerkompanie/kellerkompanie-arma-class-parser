@@ -84,7 +84,7 @@ class PreProcessor(TokenProcessor):
 
             elif token.token_type in [TokenType.COMMENT, TokenType.MCOMMENT_START, TokenType.MCOMMENT_END]:
                 msg = 'expected comments to have been handled already, but found {}'.format(repr(token))
-                raise armaclassparser.ParsingError(msg)
+                raise armaclassparser.PreProcessingError(msg)
             else:
                 self.index += 1
 
