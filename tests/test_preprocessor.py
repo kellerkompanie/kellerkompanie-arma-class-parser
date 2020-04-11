@@ -11,7 +11,7 @@ class Foo {};'''
         from armaclassparser import lexer
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         len_before = len(tokens)
-        preprocessor = PreProcessor(None)
+        preprocessor = PreProcessor(tokens, None)
         preprocessor.tokens = tokens
         preprocessor._remove_comments()
         self.assertEqual(len_before - 5, len(preprocessor.tokens))
@@ -22,7 +22,7 @@ class Foo {};'''
         from armaclassparser import lexer
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         len_before = len(tokens)
-        preprocessor = PreProcessor(None)
+        preprocessor = PreProcessor(tokens, None)
         preprocessor.tokens = tokens
         preprocessor._remove_comments()
         self.assertEqual(len_before - 5, len(preprocessor.tokens))
@@ -31,16 +31,16 @@ class Foo {};'''
         input_data = "// Hello World"
         from armaclassparser import lexer
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(None)
+        preprocessor = PreProcessor(tokens, None)
         preprocessor.tokens = tokens
         preprocessor._remove_comments()
         self.assertEqual(0, len(preprocessor.tokens))
 
     def test_remove_single_line_comment4(self):
-        input_data = "//"
+        input_data = "// "
         from armaclassparser import lexer
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(None)
+        preprocessor = PreProcessor(tokens, None)
         preprocessor.tokens = tokens
         preprocessor._remove_comments()
         self.assertEqual(0, len(preprocessor.tokens))
@@ -51,7 +51,7 @@ class Foo {};'''
 """
         from armaclassparser import lexer
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(None)
+        preprocessor = PreProcessor(tokens, None)
         preprocessor.tokens = tokens
         preprocessor._remove_comments()
         self.assertEqual(2, len(preprocessor.tokens))
@@ -61,7 +61,7 @@ class Foo {};'''
 // hello"""
         from armaclassparser import lexer
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(None)
+        preprocessor = PreProcessor(tokens, None)
         preprocessor.tokens = tokens
         preprocessor._remove_comments()
         self.assertEqual(1, len(preprocessor.tokens))
@@ -72,7 +72,7 @@ class Foo {};'''
         from armaclassparser import lexer
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         len_before = len(tokens)
-        preprocessor = PreProcessor(None)
+        preprocessor = PreProcessor(tokens, None)
         preprocessor.tokens = tokens
         preprocessor._remove_comments()
         self.assertEqual(len_before - 7, len(preprocessor.tokens))
@@ -83,7 +83,7 @@ class Foo {};'''
         from armaclassparser import lexer
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         len_before = len(tokens)
-        preprocessor = PreProcessor(None)
+        preprocessor = PreProcessor(tokens, None)
         preprocessor.tokens = tokens
         preprocessor._remove_comments()
         self.assertEqual(len_before - 7, len(preprocessor.tokens))
@@ -92,7 +92,7 @@ class Foo {};'''
         input_data = "/* Hello World*/"
         from armaclassparser import lexer
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(None)
+        preprocessor = PreProcessor(tokens, None)
         preprocessor.tokens = tokens
         preprocessor._remove_comments()
         self.assertEqual(0, len(preprocessor.tokens))
@@ -101,7 +101,7 @@ class Foo {};'''
         input_data = "/**/"
         from armaclassparser import lexer
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(None)
+        preprocessor = PreProcessor(tokens, None)
         preprocessor.tokens = tokens
         preprocessor._remove_comments()
         self.assertEqual(0, len(preprocessor.tokens))
@@ -112,7 +112,7 @@ class Foo {};'''
 """
         from armaclassparser import lexer
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(None)
+        preprocessor = PreProcessor(tokens, None)
         preprocessor.tokens = tokens
         preprocessor._remove_comments()
         self.assertEqual(2, len(preprocessor.tokens))
@@ -122,7 +122,7 @@ class Foo {};'''
 /* hello */"""
         from armaclassparser import lexer
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(None)
+        preprocessor = PreProcessor(tokens, None)
         preprocessor.tokens = tokens
         preprocessor._remove_comments()
         self.assertEqual(1, len(preprocessor.tokens))
@@ -133,7 +133,7 @@ class Foo {};'''
         world */"""
         from armaclassparser import lexer
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(None)
+        preprocessor = PreProcessor(tokens, None)
         preprocessor.tokens = tokens
         preprocessor._remove_comments()
         self.assertEqual(1, len(preprocessor.tokens))
