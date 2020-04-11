@@ -1,0 +1,3 @@
+#define TEST_FILE1_1 01_include_test_file1_line1
+#define TEST_FILE1_2 01_include_test_file1_line2
+#define TEST_FILE1_3 01_include_test_file1_line3

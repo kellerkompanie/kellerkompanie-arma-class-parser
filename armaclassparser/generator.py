@@ -1,8 +1,12 @@
 def from_tokens(tokens):
+    strings = []
     for token in tokens:
-        print(str(token), end='')
+        strings.append(str(token))
+    return ''.join(strings)
 
 
 def from_ast(ast):
+    strings = []
     for ast_node in ast:
-        print(str(ast_node), end='')
+        strings.append(str(ast_node))
+    return ''.join(strings)
