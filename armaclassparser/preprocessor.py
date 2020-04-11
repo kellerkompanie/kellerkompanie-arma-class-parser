@@ -12,7 +12,6 @@ class PreProcessor(TokenProcessor):
         self.file_path = file_path
 
     def preprocess(self):
-        print('pre-processing', self.file_path)
         self._remove_comments()
         self._replace_includes()
         return self.tokens
@@ -80,7 +79,7 @@ class PreProcessor(TokenProcessor):
                 # replace include statement with included content
                 del self.tokens[include_start:include_end]
                 self.tokens = self.tokens[0:include_start] + tokens + self.tokens[include_start:]
-                self.index += len(tokens)
+                self.index += len(tokens) - (include_end - include_start)
 
             elif token.token_type in [TokenType.COMMENT, TokenType.MCOMMENT_START, TokenType.MCOMMENT_END]:
                 msg = 'expected comments to have been handled already, but found {}'.format(repr(token))
