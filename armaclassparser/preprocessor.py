@@ -1,4 +1,5 @@
 import os
+import sys
 
 import armaclassparser
 from armaclassparser import MissingTokenError
@@ -6,14 +7,24 @@ from armaclassparser.lexer import TokenType
 from armaclassparser.parser import TokenProcessor
 
 
+class Define:
+    def __init__(self, name, right_side, args=None):
+        self.name = name
+        self.right_side = right_side
+        self.args = args
+
+
 class PreProcessor(TokenProcessor):
     def __init__(self, tokens, file_path):
         TokenProcessor.__init__(self, tokens)
         self.file_path = file_path
+        self.defines = {}
 
     def preprocess(self):
         self._remove_comments()
         self._replace_includes()
+        self._remove_escaped_newlines()
+        self._process_defines()
         return self.tokens
 
     def _resolve_include_file_path(self, include_file_path):
@@ -59,7 +70,7 @@ class PreProcessor(TokenProcessor):
 
         raise armaclassparser.MissingTokenError(tokens[0].token_type)
 
-    def _replace_includes(self):
+    def _replace_includes(self, recursive=True):
         self.index = 0
         while self.index < len(self.tokens):
             token = self.token()
@@ -71,10 +82,14 @@ class PreProcessor(TokenProcessor):
                 include_file_path = self._parse_include_file_path()
                 include_end = self.index
 
+                # recursively process the file to be included
                 dst_file_path = self._resolve_include_file_path(include_file_path)
                 tokens = armaclassparser.parse_from_file(dst_file_path)
-                preprocessor = PreProcessor(tokens, dst_file_path)
-                tokens = preprocessor.preprocess()
+
+                # added to make testing easier
+                if recursive:
+                    preprocessor = PreProcessor(tokens, dst_file_path)
+                    tokens = preprocessor.preprocess()
 
                 # replace include statement with included content
                 del self.tokens[include_start:include_end]
@@ -86,6 +101,15 @@ class PreProcessor(TokenProcessor):
                 raise armaclassparser.PreProcessingError(msg)
             else:
                 self.index += 1
+
+    def _remove_escaped_newlines(self):
+        self.index = 0
+        while self.index < len(self.tokens):
+            if self.token().token_type == TokenType.BACKSLASH:
+                next_token = self.tokens[self.index + 1]
+                if next_token.token_type == TokenType.NEWLINE:
+                    del self.tokens[self.index:self.index + 2]
+            self.index += 1
 
     def _remove_comments(self):
         removals = []
@@ -118,3 +142,106 @@ class PreProcessor(TokenProcessor):
 
         for start, end in reversed(removals):
             del self.tokens[start:end + 1]
+
+    def _delete_tokens_update_index(self, start_index, end_index):
+        del self.tokens[start_index:end_index + 1]
+        self.index -= end_index - start_index
+
+    def _process_define(self):
+        start_index = self.index
+        self.expect(TokenType.KEYWORD_DEFINE)
+        self.expect_next([TokenType.WHITESPACE, TokenType.TAB])
+        self.skip_whitespaces()
+        macro_name = self.expect(TokenType.STRING_LITERAL).value
+
+        args = []
+        if self.next() in [TokenType.L_ROUND]:
+            while self.has_next():
+                self.next()
+                if self.token().token_type == TokenType.STRING_LITERAL:
+                    args.append(self.token().value)
+                elif self.token().token_type == TokenType.COMMA:
+                    if self.tokens[self.index + 1].token_type == TokenType.STRING_LITERAL:
+                        raise armaclassparser.PreProcessingError(
+                            "expected another arg after ',' symbol, but got {} instead".format(
+                                self.tokens[self.index + 1]))
+                elif self.token().token_type == TokenType.R_ROUND:
+                    self.expect_next([TokenType.WHITESPACE, TokenType.TAB])
+
+                    break
+                else:
+                    raise armaclassparser.PreProcessingError(
+                        'encountered unexpected Token while processing macro args: {}'.format(self.token()))
+
+        self.skip_whitespaces()
+
+        # parse right side
+        right_side = []
+        while self.token().token_type != TokenType.NEWLINE and self.has_next():
+            right_side.append(self.token())
+            self.next()
+
+        # map the new define for later
+        if macro_name in self.defines:
+            msg = 'WARNING: macro {} was already defined, {} on line {}'.format(macro_name,
+                                                                                self.token().file_path,
+                                                                                self.token().line_no)
+            print(msg, file=sys.stderr)
+        self.defines[macro_name] = Define(macro_name, right_side, args)
+
+        # define was resolved, delete corresponding tokens
+        self._delete_tokens_update_index(start_index, self.index)
+
+    def _process_undefine(self):
+        start_index = self.index
+        self.expect(TokenType.KEYWORD_UNDEF)
+        self.expect_next([TokenType.WHITESPACE, TokenType.TAB])
+        self.skip_whitespaces()
+        macro_name = self.expect(TokenType.STRING_LITERAL).value
+
+        # remove existing define
+        if macro_name in self.defines:
+            del self.defines[macro_name]
+        else:
+            msg = 'WARNING: trying to undefine macro name which was not previously defined: {} in {} on line {}'.format(
+                macro_name,
+                self.token().file_path,
+                self.token().line_no)
+            print(msg, file=sys.stderr)
+
+        # undefine was resolved, delete corresponding tokens
+        self._delete_tokens_update_index(start_index, self.index)
+
+    def _process_if_else(self):
+        self.expect_next([TokenType.WHITESPACE, TokenType.TAB])
+        self.skip_whitespaces()
+        macro_name = self.expect(TokenType.STRING_LITERAL).value
+        if macro_name in self.defines:
+            # process until #ENDIF
+            pass
+        else:
+            # skip until #ELSE or #ENDIF
+            pass
+
+    def _process_macro_usage(self):
+        macro_key = self.expect(TokenType.STRING_LITERAL).value
+        define = self.defines[macro_key]
+        self.tokens = self.tokens[:self.index] + define.right_side + self.tokens[self.index + 1:]
+        self.index += len(define.right_side)
+
+    def _process_defines(self):
+        self.index = 0
+        while self.has_next():
+            if self.token().token_type == TokenType.KEYWORD_DEFINE:
+                self._process_define()
+            elif self.token().token_type == TokenType.KEYWORD_UNDEF:
+                self._process_undefine()
+            elif self.token().token_type in [TokenType.KEYWORD_IFDEF, TokenType.KEYWORD_IFNDEF]:
+                self._process_if_else()
+            elif self.token().token_type == TokenType.STRING_LITERAL:
+                if self.token().value in self.defines:
+                    self._process_macro_usage()
+                else:
+                    self.next()
+            else:
+                self.next()

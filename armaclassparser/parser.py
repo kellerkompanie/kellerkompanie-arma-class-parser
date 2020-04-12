@@ -23,6 +23,11 @@ class TokenProcessor:
     def has_next(self) -> bool:
         return self.index < len(self.tokens) - 1
 
+    def last(self) -> Token:
+        if self.index <= 0:
+            raise ValueError('invalid index: {}', self.index)
+        return self.tokens[self.index - 1]
+
     def expect(self, token_type: Union[TokenType, list]) -> Token:
         if isinstance(token_type, TokenType):
             if self.token().token_type != token_type:
@@ -32,10 +37,15 @@ class TokenProcessor:
                 raise armaclassparser.UnexpectedTokenError(token_type, self.token())
         return self.token()
 
-    def expect_next(self, token_type: TokenType) -> Token:
+    def expect_next(self, token_type: Union[TokenType, list]) -> Token:
         self.next()
         self.expect(token_type)
         return self.token()
+
+    def skip_whitespaces(self, include_newlines=False):
+        skip_tokens = [TokenType.WHITESPACE, TokenType.TAB] + ([TokenType.NEWLINE] if include_newlines else [])
+        while self.token().token_type in skip_tokens and self.index < len(self.tokens):
+            self.next()
 
 
 class Parser(TokenProcessor):
@@ -93,7 +103,7 @@ class Parser(TokenProcessor):
                 'unexpected left side of assignment, expected Identifier or ArrayDeclaration, but got {}'.format(
                     repr(left_side)))
 
-        self._parse_skip_whitespaces()
+        self.skip_whitespaces()
         token = self.token()
 
         if token.token_type == TokenType.STRING_LITERAL:
@@ -118,7 +128,7 @@ class Parser(TokenProcessor):
         children = []
         while token.token_type != TokenType.R_CURLY and self.index < len(self.tokens):
             if token.token_type in [TokenType.WHITESPACE, TokenType.TAB, TokenType.NEWLINE]:
-                self._parse_skip_whitespaces(include_newlines=True)
+                self.skip_whitespaces(include_newlines=True)
             token = self.token()
 
             if token.token_type == TokenType.NUMBER_LITERAL:
@@ -132,7 +142,7 @@ class Parser(TokenProcessor):
             else:
                 raise ParserError('encountered unexpected token while parsing array: {}'.format(repr(token)))
 
-            self._parse_skip_whitespaces(include_newlines=True)
+            self.skip_whitespaces(include_newlines=True)
             self.expect([TokenType.COMMA, TokenType.R_CURLY])
             if self.token().token_type == TokenType.COMMA:
                 token = self.next()
@@ -147,20 +157,20 @@ class Parser(TokenProcessor):
     def _parse_class_definition(self):
         class_keyword_token = self.expect(TokenType.KEYWORD_CLASS)
         self.next()
-        self._parse_skip_whitespaces()
+        self.skip_whitespaces()
 
         class_name_token = self.expect(TokenType.STRING_LITERAL)
         self.next()
-        self._parse_skip_whitespaces()
+        self.skip_whitespaces()
 
         token = self.token()
         parent_class_token = None
         if token.token_type == TokenType.COLON:
             self.next()
-            self._parse_skip_whitespaces()
+            self.skip_whitespaces()
             parent_class_token = self.token()
             self.next()
-            self._parse_skip_whitespaces()
+            self.skip_whitespaces()
 
         if self.token().token_type == TokenType.L_CURLY:
             l_curly_token = self.token()
@@ -186,11 +196,6 @@ class Parser(TokenProcessor):
                 raise armaclassparser.MissingTokenError(TokenType.R_CURLY, l_curly_token)
         else:
             raise armaclassparser.UnexpectedTokenError(TokenType.L_CURLY, self.token())
-
-    def _parse_skip_whitespaces(self, include_newlines=False):
-        skip_tokens = [TokenType.WHITESPACE, TokenType.TAB] + ([TokenType.NEWLINE] if include_newlines else [])
-        while self.token().token_type in skip_tokens and self.index < len(self.tokens):
-            self.next()
 
     def _parse_next(self):
         token = self.token()

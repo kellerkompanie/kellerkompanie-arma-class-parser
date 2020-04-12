@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from armaclassparser import generator
+from armaclassparser import generator, lexer
 from armaclassparser.lexer import Lexer
 from armaclassparser.preprocessor import PreProcessor
 
@@ -147,7 +147,8 @@ class Foo {};'''
             input_data = fp.read()
         tokens = Lexer(input_data, file_path).tokenize()
         preprocessor = PreProcessor(tokens, file_path)
-        tokens = preprocessor.preprocess()
+        preprocessor._replace_includes(recursive=False)
+        tokens = preprocessor.tokens
         output = generator.from_tokens(tokens)
 
         expected_output = """#define TEST_FILE1_1 01_include_test_file1_line1
@@ -171,9 +172,86 @@ class Foo {};
             input_data = fp.read()
         tokens = Lexer(input_data, file_path).tokenize()
         preprocessor = PreProcessor(tokens, file_path)
-        tokens = preprocessor.preprocess()
-        output = generator.from_tokens(tokens)
-
+        preprocessor._replace_includes(recursive=False)
+        output = generator.from_tokens(preprocessor.tokens)
         expected_output = "#define TEST test"
+        self.assertEqual(expected_output, output)
+
+    def test_escaped_newlines(self):
+        input_data = """\\
+"""
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
+        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
+        preprocessor._remove_escaped_newlines()
+        output = generator.from_tokens(preprocessor.tokens)
+        expected_output = ""
+        self.assertEqual(expected_output, output)
+
+    def test_define1(self):
+        input_data = """#define DEBUG_SYNCHRONOUS
+
+#define ADDON test_addon
+// Default versioning level
+#define DEFAULT_VERSIONING_LEVEL 2
+
+// weapon types
+#define TYPE_WEAPON_PRIMARY 1
+#define TYPE_WEAPON_HANDGUN 2
+#define TYPE_WEAPON_SECONDARY 4
+// more types
+#define TYPE_BINOCULAR_AND_NVG 4096
+#define TYPE_WEAPON_VEHICLE 65536
+#define TYPE_ITEM 131072
+
+#define ACE_isHC (!hasInterface && !isDedicated)
+
+#define IDC_STAMINA_BAR 193
+#define GRAVITY 9.8066
+
+class CfgPatches {
+    class ADDON {
+        type = TYPE_BINOCULAR_AND_NVG;
+        version = DEFAULT_VERSIONING_LEVEL;
+        condition = "ACE_isHC";
+        types = {
+            TYPE_WEAPON_PRIMARY,
+            TYPE_WEAPON_HANDGUN,
+            TYPE_WEAPON_SECONDARY,
+            TYPE_BINOCULAR_AND_NVG,
+            TYPE_WEAPON_VEHICLE,
+            TYPE_ITEM
+        };
+        value = IDC_STAMINA_BAR+GRAVITY;
+    };
+};"""
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
+        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
+        tokens = preprocessor.preprocess()
+        preprocessor.preprocess()
+        output = generator.from_tokens(tokens)
+        expected_output = """
+
+
+
+
+
+
+
+class CfgPatches {
+    class test_addon {
+        type = 4096;
+        version = 2;
+        condition = "(!hasInterface && !isDedicated)";
+        types = {
+            1,
+            2,
+            4,
+            4096,
+            65536,
+            131072
+        };
+        value = 193+9.8066;
+    };
+};"""
 
         self.assertEqual(expected_output, output)
