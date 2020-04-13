@@ -58,8 +58,8 @@ class Constant(ASTNode):
     def __init__(self, number_token: Token):
         if number_token is None:
             raise TypeError('parameter number_token cannot be None')
-        if number_token.token_type != TokenType.NUMBER_LITERAL:
-            raise ValueError('parameter number_token must be of type {}'.format(TokenType.NUMBER_LITERAL))
+        if number_token.token_type != TokenType.NUMBER:
+            raise ValueError('parameter number_token must be of type {}'.format(TokenType.NUMBER))
 
         ASTNode.__init__(self, ASTNodeType.CONSTANT, [number_token], number_token.line_no, number_token.line_pos)
         self.value = float(number_token.value) if '.' in number_token.value else int(number_token.value)
@@ -72,8 +72,8 @@ class Identifier(ASTNode):
     def __init__(self, name_token: Token):
         if name_token is None:
             raise TypeError('parameter name_token cannot be None')
-        if name_token.token_type != TokenType.STRING_LITERAL:
-            raise ValueError('parameter name_token must be of type {}'.format(TokenType.STRING_LITERAL))
+        if name_token.token_type != TokenType.WORD:
+            raise ValueError('parameter name_token must be of type {}'.format(TokenType.WORD))
 
         ASTNode.__init__(self, ASTNodeType.IDENTIFIER, [name_token], name_token.line_no, name_token.line_pos)
         self.name_token = name_token

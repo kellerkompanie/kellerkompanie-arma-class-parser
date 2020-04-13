@@ -42,7 +42,7 @@ class TestLexer(unittest.TestCase):
         expected = [
             Token(TokenType.KEYWORD_CLASS, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1),
             Token(TokenType.WHITESPACE, armaclassparser.lexer.STRING_INPUT_FILE, 1, 6),
-            Token(TokenType.STRING_LITERAL, armaclassparser.lexer.STRING_INPUT_FILE, 1, 7, 'Foo'),
+            Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 7, 'Foo'),
             Token(TokenType.WHITESPACE, armaclassparser.lexer.STRING_INPUT_FILE, 1, 10),
             Token(TokenType.L_CURLY, armaclassparser.lexer.STRING_INPUT_FILE, 1, 11),
             Token(TokenType.R_CURLY, armaclassparser.lexer.STRING_INPUT_FILE, 1, 12),
@@ -65,7 +65,7 @@ class TestLexer(unittest.TestCase):
             Token(TokenType.KEYWORD_INCLUDE, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1),
             Token(TokenType.WHITESPACE, armaclassparser.lexer.STRING_INPUT_FILE, 1, 9),
             Token(TokenType.DOUBLE_QUOTES, armaclassparser.lexer.STRING_INPUT_FILE, 1, 10),
-            Token(TokenType.STRING_LITERAL, armaclassparser.lexer.STRING_INPUT_FILE, 1, 11, "script_component.hpp"),
+            Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 11, "script_component.hpp"),
             Token(TokenType.DOUBLE_QUOTES, armaclassparser.lexer.STRING_INPUT_FILE, 1, 31)
         ]
         tokens = armaclassparser.parse_from_string(input_data)
@@ -74,7 +74,7 @@ class TestLexer(unittest.TestCase):
     def test_string_literal1(self):
         input_data = 'hello'
         expected = [
-            Token(TokenType.STRING_LITERAL, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, 'hello')
+            Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, 'hello')
         ]
         tokens = armaclassparser.parse_from_string(input_data)
         self.assertEqual(expected, tokens)
@@ -82,9 +82,9 @@ class TestLexer(unittest.TestCase):
     def test_string_literal2(self):
         input_data = 'hello world'
         expected = [
-            Token(TokenType.STRING_LITERAL, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, 'hello'),
+            Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, 'hello'),
             Token(TokenType.WHITESPACE, armaclassparser.lexer.STRING_INPUT_FILE, 1, 6),
-            Token(TokenType.STRING_LITERAL, armaclassparser.lexer.STRING_INPUT_FILE, 1, 7, 'world')
+            Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 7, 'world')
         ]
         tokens = armaclassparser.parse_from_string(input_data)
         self.assertEqual(expected, tokens)
@@ -92,7 +92,7 @@ class TestLexer(unittest.TestCase):
     def test_string_literal3(self):
         input_data = 'hello1234!'
         expected = [
-            Token(TokenType.STRING_LITERAL, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, 'hello1234!')
+            Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, 'hello1234!')
         ]
         tokens = armaclassparser.parse_from_string(input_data)
         self.assertEqual(expected, tokens)
@@ -100,7 +100,7 @@ class TestLexer(unittest.TestCase):
     def test_number_literal1(self):
         input_data = '1234'
         expected = [
-            Token(TokenType.NUMBER_LITERAL, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, '1234')
+            Token(TokenType.NUMBER, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, '1234')
         ]
         tokens = armaclassparser.parse_from_string(input_data)
         self.assertEqual(expected, tokens)
@@ -108,7 +108,7 @@ class TestLexer(unittest.TestCase):
     def test_number_literal2(self):
         input_data = '12.34'
         expected = [
-            Token(TokenType.NUMBER_LITERAL, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, '12.34')
+            Token(TokenType.NUMBER, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, '12.34')
         ]
         tokens = armaclassparser.parse_from_string(input_data)
         self.assertEqual(expected, tokens)
@@ -116,7 +116,7 @@ class TestLexer(unittest.TestCase):
     def test_number_literal3(self):
         input_data = '-1234'
         expected = [
-            Token(TokenType.NUMBER_LITERAL, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, '-1234')
+            Token(TokenType.NUMBER, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, '-1234')
         ]
         tokens = armaclassparser.parse_from_string(input_data)
         self.assertEqual(expected, tokens)
@@ -124,7 +124,7 @@ class TestLexer(unittest.TestCase):
     def test_number_literal4(self):
         input_data = '-12.34'
         expected = [
-            Token(TokenType.NUMBER_LITERAL, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, '-12.34')
+            Token(TokenType.NUMBER, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, '-12.34')
         ]
         tokens = armaclassparser.parse_from_string(input_data)
         self.assertEqual(expected, tokens)
@@ -136,12 +136,12 @@ class Foo {};'''
             Token(TokenType.KEYWORD_INCLUDE, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1),
             Token(TokenType.WHITESPACE, armaclassparser.lexer.STRING_INPUT_FILE, 1, 9),
             Token(TokenType.DOUBLE_QUOTES, armaclassparser.lexer.STRING_INPUT_FILE, 1, 10),
-            Token(TokenType.STRING_LITERAL, armaclassparser.lexer.STRING_INPUT_FILE, 1, 11, "script_component.hpp"),
+            Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 11, "script_component.hpp"),
             Token(TokenType.DOUBLE_QUOTES, armaclassparser.lexer.STRING_INPUT_FILE, 1, 31),
             Token(TokenType.NEWLINE, armaclassparser.lexer.STRING_INPUT_FILE, 1, 32),
             Token(TokenType.KEYWORD_CLASS, armaclassparser.lexer.STRING_INPUT_FILE, 2, 1),
             Token(TokenType.WHITESPACE, armaclassparser.lexer.STRING_INPUT_FILE, 2, 6),
-            Token(TokenType.STRING_LITERAL, armaclassparser.lexer.STRING_INPUT_FILE, 2, 7, 'Foo'),
+            Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 2, 7, 'Foo'),
             Token(TokenType.WHITESPACE, armaclassparser.lexer.STRING_INPUT_FILE, 2, 10),
             Token(TokenType.L_CURLY, armaclassparser.lexer.STRING_INPUT_FILE, 2, 11),
             Token(TokenType.R_CURLY, armaclassparser.lexer.STRING_INPUT_FILE, 2, 12),

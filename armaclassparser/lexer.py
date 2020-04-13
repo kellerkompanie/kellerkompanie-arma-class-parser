@@ -45,8 +45,8 @@ class TokenType(Enum):
     KEYWORD_ENDIF = '#endif'
     KEYWORD_DEFINE = '#define'
     KEYWORD_UNDEF = '#undef'
-    STRING_LITERAL = 'STRING'
-    NUMBER_LITERAL = 'NUMBER'
+    WORD = 'WORD'
+    NUMBER = 'NUMBER'
 
 
 class Token:
@@ -60,13 +60,13 @@ class Token:
         self.value = value
 
     def __repr__(self):
-        if self.token_type in [TokenType.STRING_LITERAL, TokenType.NUMBER_LITERAL]:
+        if self.token_type in [TokenType.WORD, TokenType.NUMBER]:
             return '<line: %s, pos: %s, %s(%s)>' % (self.line_no, self.line_pos, self.token_type, self.value)
         else:
             return '<line: %s, pos: %s, %s>' % (self.line_no, self.line_pos, self.token_type)
 
     def __str__(self):
-        if self.token_type in [TokenType.STRING_LITERAL, TokenType.NUMBER_LITERAL]:
+        if self.token_type in [TokenType.WORD, TokenType.NUMBER]:
             return self.value
         else:
             return '%s' % self.token_type.value
@@ -120,7 +120,7 @@ class Lexer:
 
         if token_type in [TokenType.MCOMMENT_START, TokenType.MCOMMENT_END, TokenType.COMMENT]:
             line_pos -= 1
-        elif token_type in [TokenType.NUMBER_LITERAL, TokenType.STRING_LITERAL]:
+        elif token_type in [TokenType.NUMBER, TokenType.WORD]:
             line_pos -= len(value) - 1
         elif token_type in [TokenType.KEYWORD_CLASS, TokenType.KEYWORD_INCLUDE, TokenType.KEYWORD_IFDEF,
                             TokenType.KEYWORD_IFNDEF, TokenType.KEYWORD_ELSE, TokenType.KEYWORD_ENDIF,
@@ -146,7 +146,7 @@ class Lexer:
                             number_literal += self.next()
                         else:
                             break
-                    self.add_token(TokenType.NUMBER_LITERAL, number_literal)
+                    self.add_token(TokenType.NUMBER, number_literal)
                 else:
                     self.add_token(TokenType.MINUS)
 
@@ -199,7 +199,7 @@ class Lexer:
                         number_literal += self.next()
                     else:
                         break
-                self.add_token(TokenType.NUMBER_LITERAL, number_literal)
+                self.add_token(TokenType.NUMBER, number_literal)
 
             elif next_char.isalpha():
                 # parse letters and numbers
@@ -214,7 +214,7 @@ class Lexer:
                 if string_literal == 'class':
                     self.add_token(TokenType.KEYWORD_CLASS)
                 else:
-                    self.add_token(TokenType.STRING_LITERAL, string_literal)
+                    self.add_token(TokenType.WORD, string_literal)
 
             else:
                 if next_char in token_type_values:

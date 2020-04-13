@@ -13,6 +13,9 @@ class Define:
         self.right_side = right_side
         self.args = args
 
+    def has_args(self) -> bool:
+        return self.args is not None and len(self.args) > 0
+
 
 class PreProcessor(TokenProcessor):
     def __init__(self, tokens, file_path):
@@ -20,14 +23,18 @@ class PreProcessor(TokenProcessor):
         self.file_path = file_path
         self.defines = {}
 
-    def preprocess(self):
+    def preprocess(self, process_defines=True) -> list:
         self._remove_comments()
-        self._replace_includes()
+        self._replace_includes(process_defines=process_defines)
         self._remove_escaped_newlines()
-        self._process_defines()
+
+        # makes testing easier
+        if process_defines:
+            self._process_defines()
+
         return self.tokens
 
-    def _resolve_include_file_path(self, include_file_path):
+    def _resolve_include_file_path(self, include_file_path) -> str:
         if include_file_path.startswith('\\'):
             # absolute file path, e.g., '\z\ace\addons\main\script_mod.hpp'
             drive, _ = os.path.splitdrive(self.file_path)
@@ -51,7 +58,7 @@ class PreProcessor(TokenProcessor):
                 raise armaclassparser.PreProcessingError(msg)
             return dst_file_path
 
-    def _parse_include_file_path(self):
+    def _parse_include_file_path(self) -> str:
         tokens = [self.token()]
 
         if tokens[0].token_type not in [TokenType.DOUBLE_QUOTES, TokenType.LESS]:
@@ -70,7 +77,7 @@ class PreProcessor(TokenProcessor):
 
         raise armaclassparser.MissingTokenError(tokens[0].token_type)
 
-    def _replace_includes(self, recursive=True):
+    def _replace_includes(self, recursive=True, process_defines=True):
         self.index = 0
         while self.index < len(self.tokens):
             token = self.token()
@@ -89,7 +96,7 @@ class PreProcessor(TokenProcessor):
                 # added to make testing easier
                 if recursive:
                     preprocessor = PreProcessor(tokens, dst_file_path)
-                    tokens = preprocessor.preprocess()
+                    tokens = preprocessor.preprocess(process_defines=process_defines)
 
                 # replace include statement with included content
                 del self.tokens[include_start:include_end]
@@ -152,16 +159,16 @@ class PreProcessor(TokenProcessor):
         self.expect(TokenType.KEYWORD_DEFINE)
         self.expect_next([TokenType.WHITESPACE, TokenType.TAB])
         self.skip_whitespaces()
-        macro_name = self.expect(TokenType.STRING_LITERAL).value
+        macro_name = self.expect(TokenType.WORD).value
 
         args = []
         if self.next() in [TokenType.L_ROUND]:
             while self.has_next():
                 self.next()
-                if self.token().token_type == TokenType.STRING_LITERAL:
+                if self.token().token_type == TokenType.WORD:
                     args.append(self.token().value)
                 elif self.token().token_type == TokenType.COMMA:
-                    if self.tokens[self.index + 1].token_type == TokenType.STRING_LITERAL:
+                    if self.tokens[self.index + 1].token_type == TokenType.WORD:
                         raise armaclassparser.PreProcessingError(
                             "expected another arg after ',' symbol, but got {} instead".format(
                                 self.tokens[self.index + 1]))
@@ -197,7 +204,7 @@ class PreProcessor(TokenProcessor):
         self.expect(TokenType.KEYWORD_UNDEF)
         self.expect_next([TokenType.WHITESPACE, TokenType.TAB])
         self.skip_whitespaces()
-        macro_name = self.expect(TokenType.STRING_LITERAL).value
+        macro_name = self.expect(TokenType.WORD).value
 
         # remove existing define
         if macro_name in self.defines:
@@ -213,9 +220,11 @@ class PreProcessor(TokenProcessor):
         self._delete_tokens_update_index(start_index, self.index)
 
     def _process_if_else(self):
+        self.expect([TokenType.KEYWORD_IFDEF, TokenType.KEYWORD_IFNDEF])
+
         self.expect_next([TokenType.WHITESPACE, TokenType.TAB])
         self.skip_whitespaces()
-        macro_name = self.expect(TokenType.STRING_LITERAL).value
+        macro_name = self.expect(TokenType.WORD).value
         if macro_name in self.defines:
             # process until #ENDIF
             pass
@@ -224,7 +233,7 @@ class PreProcessor(TokenProcessor):
             pass
 
     def _process_macro_usage(self):
-        macro_key = self.expect(TokenType.STRING_LITERAL).value
+        macro_key = self.expect(TokenType.WORD).value
         define = self.defines[macro_key]
         self.tokens = self.tokens[:self.index] + define.right_side + self.tokens[self.index + 1:]
         self.index += len(define.right_side)
@@ -238,7 +247,7 @@ class PreProcessor(TokenProcessor):
                 self._process_undefine()
             elif self.token().token_type in [TokenType.KEYWORD_IFDEF, TokenType.KEYWORD_IFNDEF]:
                 self._process_if_else()
-            elif self.token().token_type == TokenType.STRING_LITERAL:
+            elif self.token().token_type == TokenType.WORD:
                 if self.token().value in self.defines:
                     self._process_macro_usage()
                 else:

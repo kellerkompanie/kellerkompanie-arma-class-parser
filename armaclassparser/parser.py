@@ -73,12 +73,12 @@ class Parser(TokenProcessor):
         raise armaclassparser.MissingTokenError(tokens[0].token_type)
 
     def _parse_constant(self):
-        number_literal_token = self.expect(TokenType.NUMBER_LITERAL)
+        number_literal_token = self.expect(TokenType.NUMBER)
         self.next()
         return Constant(number_literal_token)
 
     def _parse_identifier(self):
-        name_token = self.expect(TokenType.STRING_LITERAL)
+        name_token = self.expect(TokenType.WORD)
         self.index += 1
         return Identifier(name_token)
 
@@ -106,11 +106,11 @@ class Parser(TokenProcessor):
         self.skip_whitespaces()
         token = self.token()
 
-        if token.token_type == TokenType.STRING_LITERAL:
+        if token.token_type == TokenType.WORD:
             right_side = self._parse_identifier()
         elif token.token_type in [TokenType.QUOTE, TokenType.DOUBLE_QUOTES]:
             right_side = self._parse_string_literal()
-        elif token.token_type == TokenType.NUMBER_LITERAL:
+        elif token.token_type == TokenType.NUMBER:
             right_side = self._parse_constant()
         elif token.token_type == TokenType.L_CURLY:
             right_side = self._parse_array()
@@ -131,11 +131,11 @@ class Parser(TokenProcessor):
                 self.skip_whitespaces(include_newlines=True)
             token = self.token()
 
-            if token.token_type == TokenType.NUMBER_LITERAL:
+            if token.token_type == TokenType.NUMBER:
                 children.append(self._parse_constant())
             elif token.token_type in [TokenType.QUOTE, TokenType.DOUBLE_QUOTES]:
                 children.append(self._parse_string_literal())
-            elif token.token_type == TokenType.STRING_LITERAL:
+            elif token.token_type == TokenType.WORD:
                 children.append(self._parse_identifier())
             elif token.token_type == TokenType.L_CURLY:
                 children.append(self._parse_array())
@@ -159,7 +159,7 @@ class Parser(TokenProcessor):
         self.next()
         self.skip_whitespaces()
 
-        class_name_token = self.expect(TokenType.STRING_LITERAL)
+        class_name_token = self.expect(TokenType.WORD)
         self.next()
         self.skip_whitespaces()
 
@@ -206,7 +206,7 @@ class Parser(TokenProcessor):
         elif token.token_type in [TokenType.NEWLINE, TokenType.TAB]:
             self.index += 1
             return None
-        elif token.token_type == TokenType.STRING_LITERAL:
+        elif token.token_type == TokenType.WORD:
             return self._parse_identifier()
         elif token.token_type == TokenType.L_SQUARE:
             return self._parse_array_declaration()
