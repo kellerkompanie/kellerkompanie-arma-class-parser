@@ -255,3 +255,33 @@ class CfgPatches {
 };"""
 
         self.assertEqual(expected_output, output)
+
+    def test_ifdef1(self):
+        input_data = """#define TEST
+#ifdef TEST
+#define A a
+#else
+#define A b
+#endif
+class A {};"""
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
+        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
+        preprocessor.preprocess()
+        output = generator.from_tokens(preprocessor.tokens)
+        expected_output = "class a {};"
+        self.assertEqual(expected_output, output)
+
+    def test_ifndef1(self):
+        input_data = """#define TEST
+#ifndef TEST
+#define A a
+#else
+#define A b
+#endif
+class A {};"""
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
+        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
+        preprocessor.preprocess()
+        output = generator.from_tokens(preprocessor.tokens)
+        expected_output = "class b {};"
+        self.assertEqual(expected_output, output)

@@ -219,18 +219,56 @@ class PreProcessor(TokenProcessor):
         # undefine was resolved, delete corresponding tokens
         self._delete_tokens_update_index(start_index, self.index)
 
+    def _skip_until(self, break_tokens):
+        while self.index < len(self.tokens) and self.token().token_type not in break_tokens:
+            del self.tokens[self.index]
+
+        if self.index == len(self.tokens):
+            raise armaclassparser.PreProcessingError('reached EOF while skipping until {}'.format(break_tokens))
+
+        self.expect(break_tokens)
+
+    def _process_until(self, break_tokens):
+        while self.index < len(self.tokens) and self.token().token_type not in break_tokens:
+            self._process_next()
+
+        if self.index == len(self.tokens) - 1:
+            raise armaclassparser.PreProcessingError('reached EOF while processing until {}'.format(break_tokens))
+
+        self.expect(break_tokens)
+
     def _process_if_else(self):
-        self.expect([TokenType.KEYWORD_IFDEF, TokenType.KEYWORD_IFNDEF])
+        start_index = self.index
+        if_token = self.expect([TokenType.KEYWORD_IFDEF, TokenType.KEYWORD_IFNDEF])
 
         self.expect_next([TokenType.WHITESPACE, TokenType.TAB])
         self.skip_whitespaces()
         macro_name = self.expect(TokenType.WORD).value
-        if macro_name in self.defines:
-            # process until #ENDIF
-            pass
+        self.expect_next(TokenType.NEWLINE)
+        self._delete_tokens_update_index(start_index, self.index)
+
+        if (if_token.token_type == TokenType.KEYWORD_IFDEF and macro_name in self.defines) or \
+                (if_token.token_type == TokenType.KEYWORD_IFNDEF and macro_name not in self.defines):
+            # process until #else or #endif
+            self._process_until([TokenType.KEYWORD_ELSE, TokenType.KEYWORD_ENDIF])
+            if self.token().token_type == TokenType.KEYWORD_ELSE:
+                del self.tokens[self.index]
+                self.expect(TokenType.NEWLINE)
+                del self.tokens[self.index]
+                self._skip_until([TokenType.KEYWORD_ENDIF])
         else:
-            # skip until #ELSE or #ENDIF
-            pass
+            # skip until #else or #endif
+            self._skip_until([TokenType.KEYWORD_ELSE, TokenType.KEYWORD_ENDIF])
+            if self.token().token_type == TokenType.KEYWORD_ELSE:
+                del self.tokens[self.index]
+                self.expect(TokenType.NEWLINE)
+                del self.tokens[self.index]
+                self._process_until([TokenType.KEYWORD_ENDIF])
+
+        # #endif was reached in any case, ignore and delete including newline
+        del self.tokens[self.index]
+        self.expect(TokenType.NEWLINE)
+        del self.tokens[self.index]
 
     def _process_macro_usage(self):
         macro_key = self.expect(TokenType.WORD).value
@@ -238,19 +276,22 @@ class PreProcessor(TokenProcessor):
         self.tokens = self.tokens[:self.index] + define.right_side + self.tokens[self.index + 1:]
         self.index += len(define.right_side)
 
+    def _process_next(self):
+        if self.token().token_type == TokenType.KEYWORD_DEFINE:
+            self._process_define()
+        elif self.token().token_type == TokenType.KEYWORD_UNDEF:
+            self._process_undefine()
+        elif self.token().token_type in [TokenType.KEYWORD_IFDEF, TokenType.KEYWORD_IFNDEF]:
+            self._process_if_else()
+        elif self.token().token_type == TokenType.WORD:
+            if self.token().value in self.defines:
+                self._process_macro_usage()
+            else:
+                self.index += 1
+        else:
+            self.index += 1
+
     def _process_defines(self):
         self.index = 0
-        while self.has_next():
-            if self.token().token_type == TokenType.KEYWORD_DEFINE:
-                self._process_define()
-            elif self.token().token_type == TokenType.KEYWORD_UNDEF:
-                self._process_undefine()
-            elif self.token().token_type in [TokenType.KEYWORD_IFDEF, TokenType.KEYWORD_IFNDEF]:
-                self._process_if_else()
-            elif self.token().token_type == TokenType.WORD:
-                if self.token().value in self.defines:
-                    self._process_macro_usage()
-                else:
-                    self.next()
-            else:
-                self.next()
+        while self.index < len(self.tokens):
+            self._process_next()

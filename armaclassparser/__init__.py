@@ -10,12 +10,12 @@ class ParsingError(Exception):
 
 
 class UnexpectedTokenError(ParsingError):
-    def __init__(self, expected, actual):
+    def __init__(self, expected, actual: lexer.Token):
         self.expected = expected
         self.actual = actual
         super().__init__(
-            "expected token {} but got {} on line {}, col {}".format(expected, actual.token_type, actual.line_no,
-                                                                     actual.line_pos))
+            "expected token {} but got {} on line {}, col {} in {}".format(expected, actual.token_type, actual.line_no,
+                                                                           actual.line_pos, actual.file_path))
 
 
 class UnexpectedStatementError(ParsingError):
