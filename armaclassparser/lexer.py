@@ -212,7 +212,7 @@ class Lexer:
                 string_literal = next_char
                 while self.has_next():
                     peeked_char = self.peek()
-                    if peeked_char.isdecimal() or peeked_char.isalpha() or peeked_char in '._!%&?':
+                    if peeked_char.isdecimal() or peeked_char.isalpha() or peeked_char in '_!%&?':
                         string_literal += self.next()
                     else:
                         break

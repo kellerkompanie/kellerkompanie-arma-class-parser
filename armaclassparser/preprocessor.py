@@ -3,7 +3,7 @@ import sys
 
 import armaclassparser
 from armaclassparser import MissingTokenError
-from armaclassparser.lexer import TokenType
+from armaclassparser.lexer import TokenType, Token
 from armaclassparser.parser import TokenProcessor
 
 
@@ -410,6 +410,20 @@ class PreProcessor(TokenProcessor):
         else:
             # macro consists of only 1 token, expand it and insert into tokens + update index
             expanded_macro = self._expand_macro([self.token()])
+
+            if self.index > 0:
+                previous_token = self.tokens[self.index - 1]
+                if previous_token.token_type == TokenType.HASH:
+                    # special case of stringify, e.g., #define QUOTE(var) #var -> QUOTE(hello) -> "hello"
+                    l_quote = Token(TokenType.DOUBLE_QUOTES, previous_token.file_path, previous_token.line_no,
+                                    previous_token.line_pos)
+                    r_quote = Token(TokenType.DOUBLE_QUOTES, previous_token.file_path, previous_token.line_no,
+                                    previous_token.line_pos)
+                    expanded_macro = [l_quote] + expanded_macro + [r_quote]
+                    self.index -= 1
+                    del self.tokens[self.index]
+                    start_index -= 1
+
             self.tokens = self.tokens[:start_index] + expanded_macro + self.tokens[start_index + 1:]
             self.index = self.index + len(expanded_macro)
 

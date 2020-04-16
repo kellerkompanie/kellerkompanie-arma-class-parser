@@ -431,6 +431,9 @@ ABC(y)"""
     def test_compile_file(self):
         input_data = """#define DOUBLES(var1,var2) var1##_##var2
 #define QUOTE(var1) #var1
+#define MAINPREFIX x
+#define SUBPREFIX addons
+#define PATHTO_SYS(var1,var2,var3) \\MAINPREFIX\\var1\\SUBPREFIX\\var2\\var3.sqf
 #define COMPILE_FILE2_CFG_SYS(var1) compile preprocessFileLineNumbers var1
 #define COMPILE_FILE2_SYS(var1) COMPILE_FILE2_CFG_SYS(var1)
 #define COMPILE_FILE_SYS(var1,var2,var3) COMPILE_FILE2_SYS('PATHTO_SYS(var1,var2,var3)')
@@ -441,5 +444,15 @@ QUOTE(COMPILE_FILE(x))"""
         preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
         preprocessor.preprocess()
         output = generator.from_tokens(preprocessor.tokens)
-        expected_output = "#COMPILE_FILE_SYS(acex,rations,x)"
+        expected_output = '"compile preprocessFileLineNumbers \'\\x\\acex\\addons\\rations\\x.sqf\'"'
+        self.assertEqual(expected_output, output)
+
+    def test_quote(self):
+        input_data = """#define QUOTE(var) #var
+QUOTE(hello world)"""
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
+        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
+        preprocessor.preprocess()
+        output = generator.from_tokens(preprocessor.tokens)
+        expected_output = '"hello world"'
         self.assertEqual(expected_output, output)

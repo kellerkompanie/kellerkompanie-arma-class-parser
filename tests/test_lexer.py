@@ -65,7 +65,9 @@ class TestLexer(unittest.TestCase):
             Token(TokenType.KEYWORD_INCLUDE, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1),
             Token(TokenType.WHITESPACE, armaclassparser.lexer.STRING_INPUT_FILE, 1, 9),
             Token(TokenType.DOUBLE_QUOTES, armaclassparser.lexer.STRING_INPUT_FILE, 1, 10),
-            Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 11, "script_component.hpp"),
+            Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 11, "script_component"),
+            Token(TokenType.DOT, armaclassparser.lexer.STRING_INPUT_FILE, 1, 27),
+            Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 28, "hpp"),
             Token(TokenType.DOUBLE_QUOTES, armaclassparser.lexer.STRING_INPUT_FILE, 1, 31)
         ]
         tokens = armaclassparser.parse_from_string(input_data)
@@ -136,7 +138,9 @@ class Foo {};'''
             Token(TokenType.KEYWORD_INCLUDE, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1),
             Token(TokenType.WHITESPACE, armaclassparser.lexer.STRING_INPUT_FILE, 1, 9),
             Token(TokenType.DOUBLE_QUOTES, armaclassparser.lexer.STRING_INPUT_FILE, 1, 10),
-            Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 11, "script_component.hpp"),
+            Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 11, "script_component"),
+            Token(TokenType.DOT, armaclassparser.lexer.STRING_INPUT_FILE, 1, 27),
+            Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 28, "hpp"),
             Token(TokenType.DOUBLE_QUOTES, armaclassparser.lexer.STRING_INPUT_FILE, 1, 31),
             Token(TokenType.NEWLINE, armaclassparser.lexer.STRING_INPUT_FILE, 1, 32),
             Token(TokenType.KEYWORD_CLASS, armaclassparser.lexer.STRING_INPUT_FILE, 2, 1),
