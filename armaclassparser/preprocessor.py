@@ -104,6 +104,12 @@ class PreProcessor(TokenProcessor):
         raise armaclassparser.MissingTokenError(tokens[0].token_type)
 
     def _replace_includes(self, recursive=True, process_defines=True):
+        """
+        Processes #include directives by parsing the included file and inserting it contents in place of the #include.
+
+        :param recursive: bool - if True (default) it will pre-process the included file, mainly used for testing.
+        :param process_defines: bool - if True (default) it will pre-process the #defines etc. in the included file.
+        """
         self.index = 0
         while self.index < len(self.tokens):
             token = self.token()
@@ -184,6 +190,12 @@ class PreProcessor(TokenProcessor):
             del self.tokens[start:end + 1]
 
     def _delete_tokens_update_index(self, start_index, end_index):
+        """
+        Deletes all tokens between [start_index:end_index] including the token at end_index, then updates self.index.
+
+        :param start_index: int - index at which to start deleting (inclusive)
+        :param end_index: int - index until which to delete (inclusive)
+        """
         del self.tokens[start_index:end_index + 1]
         self.index -= end_index - start_index
 
@@ -354,7 +366,7 @@ class PreProcessor(TokenProcessor):
                 macro_processor.expect(TokenType.COMMA)
                 macro_processor.next()
 
-            # parse the last arugment individually as it will be ended by ) instead of ,
+            # parse the last argument individually as it will be ended by ) instead of ,
             arg_value = []
             while macro_processor.token().token_type != TokenType.R_ROUND:
                 arg_value += macro_processor._process_next()
