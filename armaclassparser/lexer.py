@@ -21,6 +21,7 @@ class TokenType(Enum):
     LESS = '<'
     GREATER = '>'
     HASH = '#'
+    DOUBLE_HASH = '##'
     COMMENT = '//'
     MCOMMENT_START = '/*'
     MCOMMENT_END = '*/'
@@ -160,6 +161,11 @@ class Lexer:
                     self.add_token(TokenType.MUL)
 
             elif next_char == '#':
+                if self.peek(1) == '#':
+                    self.next()
+                    self.add_token(TokenType.DOUBLE_HASH)
+                    continue
+
                 peek = '#' + self.peek(7)
 
                 found_keyword = False

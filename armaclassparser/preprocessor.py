@@ -23,18 +23,39 @@ class PreProcessor(TokenProcessor):
         self.file_path = file_path
         self.defines = {}
 
-    def preprocess(self, process_defines=True) -> list:
+    def preprocess(self, process_directives=True) -> list:
+        """
+        Runs the pre-processor on the input:
+            1. removes comments (multi-line + single line)
+            2. replaces #include directives
+            3. removes escaped newlines
+            4. processes directives (#define,...) and macro usages
+
+        :param process_directives: bool - if True process the directives (#define, ...) and macros, mainly for testing
+        :return: list of tokens - the input after pre-processing
+        """
         self._remove_comments()
-        self._replace_includes(process_defines=process_defines)
+        self._replace_includes(process_defines=process_directives)
         self._remove_escaped_newlines()
 
         # makes testing easier
-        if process_defines:
-            self._process_defines()
+        if process_directives:
+            self._process_directives()
 
         return self.tokens
 
     def _resolve_include_file_path(self, include_file_path) -> str:
+        """
+        Lookup the file path of an #include directive and resolve to an absolute path. For relative paths (e.g.,
+        #include 'script_component.hpp') the input will be resolved on the file location of the pre-processed file. For
+        absolute paths (e.g., #include '\\z\\ace\\...') it will first look on the same drive the currently pre-processed
+        file is on and if it cannot be found it will try to look in project drive (P:).
+
+        NOTE: this probably won't work on Linux!
+
+        :param include_file_path: string - the file path to be resolved, e.g., 'script_component.hpp'
+        :return: string - absolute file path of the resolved file
+        """
         if include_file_path.startswith('\\'):
             # absolute file path, e.g., '\z\ace\addons\main\script_mod.hpp'
             drive, _ = os.path.splitdrive(self.file_path)
@@ -59,6 +80,11 @@ class PreProcessor(TokenProcessor):
             return dst_file_path
 
     def _parse_include_file_path(self) -> str:
+        """
+        Parses the right-side of an #include statement, e.g., "script_component.hpp".
+
+        :return: string - the string value of the right-side, e.g., "script_component.hpp"
+        """
         tokens = [self.token()]
 
         if tokens[0].token_type not in [TokenType.DOUBLE_QUOTES, TokenType.LESS]:
@@ -96,7 +122,8 @@ class PreProcessor(TokenProcessor):
                 # added to make testing easier
                 if recursive:
                     preprocessor = PreProcessor(tokens, dst_file_path)
-                    tokens = preprocessor.preprocess(process_defines=process_defines)
+                    preprocessor.defines = self.defines
+                    tokens = preprocessor.preprocess(process_directives=process_defines)
 
                 # replace include statement with included content
                 del self.tokens[include_start:include_end]
@@ -110,6 +137,9 @@ class PreProcessor(TokenProcessor):
                 self.index += 1
 
     def _remove_escaped_newlines(self):
+        """
+        Removes all newline symbols which are escaped using \\, such as might happen for macro definitions.
+        """
         self.index = 0
         while self.index < len(self.tokens):
             if self.token().token_type == TokenType.BACKSLASH:
@@ -119,6 +149,9 @@ class PreProcessor(TokenProcessor):
             self.index += 1
 
     def _remove_comments(self):
+        """
+        Removes all multi- and single line comments.
+        """
         removals = []
         self.index = 0
         while self.has_next():
@@ -155,37 +188,44 @@ class PreProcessor(TokenProcessor):
         self.index -= end_index - start_index
 
     def _process_define(self):
+        """
+        Processes #define directives, e.g., #define EXP(x) x * x. The resulting Define object is put into the
+        map of defines (self.defines) for later lookup.
+        """
         start_index = self.index
         self.expect(TokenType.KEYWORD_DEFINE)
         self.expect_next([TokenType.WHITESPACE, TokenType.TAB])
         self.skip_whitespaces()
         macro_name = self.expect(TokenType.WORD).value
 
+        self.expect_next([TokenType.L_ROUND, TokenType.WHITESPACE, TokenType.TAB, TokenType.NEWLINE])
         args = []
-        if self.next() in [TokenType.L_ROUND]:
-            while self.has_next():
-                self.next()
-                if self.token().token_type == TokenType.WORD:
-                    args.append(self.token().value)
-                elif self.token().token_type == TokenType.COMMA:
-                    if self.tokens[self.index + 1].token_type == TokenType.WORD:
-                        raise armaclassparser.PreProcessingError(
-                            "expected another arg after ',' symbol, but got {} instead".format(
-                                self.tokens[self.index + 1]))
-                elif self.token().token_type == TokenType.R_ROUND:
-                    self.expect_next([TokenType.WHITESPACE, TokenType.TAB])
-
+        if self.token().token_type == TokenType.L_ROUND:
+            self.expect_next(TokenType.WORD)
+            while self.index < len(self.tokens):
+                arg_word = self.expect(TokenType.WORD)
+                args.append(arg_word.value)
+                next_token = self.tokens[self.index + 1]
+                if next_token.token_type == TokenType.COMMA:
+                    self.expect_next(TokenType.COMMA)
+                    self.expect_next([TokenType.WORD, TokenType.TAB, TokenType.WHITESPACE])
+                    if self.token().token_type in [TokenType.TAB, TokenType.WHITESPACE]:
+                        self.skip_whitespaces()
+                elif next_token.token_type == TokenType.R_ROUND:
+                    self.expect_next(TokenType.R_ROUND)
+                    self.next()
                     break
                 else:
                     raise armaclassparser.PreProcessingError(
-                        'encountered unexpected Token while processing macro args: {}'.format(self.token()))
+                        'unexpected token while parsing args of #define: {}'.format(next_token))
 
         self.skip_whitespaces()
 
         # parse right side
         right_side = []
         while self.token().token_type != TokenType.NEWLINE and self.has_next():
-            right_side.append(self.token())
+            if self.token().token_type != TokenType.DOUBLE_HASH:
+                right_side.append(self.token())
             self.next()
 
         # map the new define for later
@@ -200,6 +240,9 @@ class PreProcessor(TokenProcessor):
         self._delete_tokens_update_index(start_index, self.index)
 
     def _process_undefine(self):
+        """
+        Processes #undef directives and removes them from the mapping (self.defines).
+        """
         start_index = self.index
         self.expect(TokenType.KEYWORD_UNDEF)
         self.expect_next([TokenType.WHITESPACE, TokenType.TAB])
@@ -220,6 +263,11 @@ class PreProcessor(TokenProcessor):
         self._delete_tokens_update_index(start_index, self.index)
 
     def _skip_until(self, break_tokens):
+        """
+        Skips all tokens until one of the break tokens is encountered. The skipped tokens are deleted.
+
+        :param break_tokens: list of tokens - the tokens on which to stop skipping
+        """
         while self.index < len(self.tokens) and self.token().token_type not in break_tokens:
             del self.tokens[self.index]
 
@@ -229,6 +277,11 @@ class PreProcessor(TokenProcessor):
         self.expect(break_tokens)
 
     def _process_until(self, break_tokens):
+        """
+        Processes all tokens until one of the break tokens is encountered.
+
+        :param break_tokens: list of tokens - the tokens on which to stop processing
+        """
         while self.index < len(self.tokens) and self.token().token_type not in break_tokens:
             self._process_next()
 
@@ -238,6 +291,9 @@ class PreProcessor(TokenProcessor):
         self.expect(break_tokens)
 
     def _process_if_else(self):
+        """
+        Processes and replaces #ifdef, #ifndef, #else, #endif directives in place.
+        """
         start_index = self.index
         if_token = self.expect([TokenType.KEYWORD_IFDEF, TokenType.KEYWORD_IFNDEF])
 
@@ -270,28 +326,126 @@ class PreProcessor(TokenProcessor):
         self.expect(TokenType.NEWLINE)
         del self.tokens[self.index]
 
+    def _expand_macro(self, tokens):
+        """
+        Takes a macro in form of tokens and expands it based on the current defines.
+
+        :param tokens: list of tokens - the input macro, must be entire macro including parenthesis, e.g., "EGVAR(main,variable)"
+        :return: list of tokens - the macro after expansion
+        """
+        # macros can be nested, so treat the macro as self-sustained unit that has to be processed
+        macro_processor = PreProcessor(tokens, self.file_path)
+        macro_processor.defines = self.defines  # keep all defines up to this point
+        macro_key = macro_processor.expect(TokenType.WORD).value
+        define = self.defines[macro_key]  # lookup the definition of the macro we are about to expand
+
+        if define.has_args():
+            # if this macro has arguments we need to parse all of them in order to know with which tokens to replace
+            # the arguments of the macro
+            macro_processor.expect_next(TokenType.L_ROUND)
+            macro_processor.next()
+            arg_values = {}  # map argument -> tokens
+            for i in range(0, len(define.args) - 1):
+                # if macro has more than 1 argument parse first the 'inner' ones which are succeeded by a ,
+                arg_value = []
+                while macro_processor.token().token_type != TokenType.COMMA:
+                    arg_value += macro_processor._process_next()
+                arg_values[define.args[i]] = arg_value
+                macro_processor.expect(TokenType.COMMA)
+                macro_processor.next()
+
+            # parse the last arugment individually as it will be ended by ) instead of ,
+            arg_value = []
+            while macro_processor.token().token_type != TokenType.R_ROUND:
+                arg_value += macro_processor._process_next()
+            arg_values[define.args[-1]] = arg_value
+            macro_processor.expect(TokenType.R_ROUND)
+
+            # right side can be nested, so process it as an independent unit
+            right_side_processor = PreProcessor(define.right_side.copy(), '<MACRO>')
+            right_side_processor.defines = self.defines
+            for key, value in arg_values.items():
+                # little trick: we treat all of the previously parsed arguments
+                right_side_processor.defines[key] = Define(key, value)
+            right_side_processor._process_directives()
+            replacement = right_side_processor.tokens
+
+            return replacement
+
+        else:
+            # simple macro, just return processed right side
+            right_side_processor = PreProcessor(define.right_side.copy(), '<MACRO>')
+            right_side_processor.defines = self.defines
+            right_side_processor._process_directives()
+            replacement = right_side_processor.tokens
+            return replacement
+
     def _process_macro_usage(self):
+        """
+        Processes one macro usage, e.g., "ADDON" or "EGVAR(main,variable)", replaces the old macro directive with the
+        expanded version and updates index accordingly.
+
+        :return: list of tokens - the expanded macro
+        """
+        start_index = self.index  # needed to replace the macro tokens we are expanding
         macro_key = self.expect(TokenType.WORD).value
-        define = self.defines[macro_key]
-        self.tokens = self.tokens[:self.index] + define.right_side + self.tokens[self.index + 1:]
-        self.index += len(define.right_side)
+        define = self.defines[macro_key]  # lookup the definition of the macro we are about to expand
+
+        if define.has_args():
+            # skip all tokens that belong to the macro, including the arguments and parenthesis
+            self.expect_next(TokenType.L_ROUND)
+            self.next()
+            unclosed_l_rounds = 1
+            while unclosed_l_rounds != 0:
+                if self.token().token_type == TokenType.L_ROUND:
+                    unclosed_l_rounds += 1
+                elif self.token().token_type == TokenType.R_ROUND:
+                    unclosed_l_rounds -= 1
+                self.index += 1
+
+            # expand the entire macro and insert it into the tokens + update index
+            expanded_macro = self._expand_macro(self.tokens[start_index:self.index])
+            self.tokens = self.tokens[:start_index] + expanded_macro + self.tokens[self.index:]
+            self.index = start_index + len(expanded_macro)
+        else:
+            # macro consists of only 1 token, expand it and insert into tokens + update index
+            expanded_macro = self._expand_macro([self.token()])
+            self.tokens = self.tokens[:start_index] + expanded_macro + self.tokens[start_index + 1:]
+            self.index = self.index + len(expanded_macro)
+
+        return expanded_macro
 
     def _process_next(self):
+        """
+        Processes next token or pre-processor directive. If token is a pre-processor directive it will be processed and
+        replaced/deleted. Leaves all other tokens as is.
+        Returns a list of all tokens that replaced the processed one, e.g., in case of macro expansion it will hold the
+        newly added tokens. For pre-processor directives #define, #undef and #if/else it will return empty list, as
+        these are simply processed and then removed. All other tokens are left as is and returned as [token].
+
+        :return: list of tokens after replacement
+        """
         if self.token().token_type == TokenType.KEYWORD_DEFINE:
             self._process_define()
+            return []
         elif self.token().token_type == TokenType.KEYWORD_UNDEF:
             self._process_undefine()
+            return []
         elif self.token().token_type in [TokenType.KEYWORD_IFDEF, TokenType.KEYWORD_IFNDEF]:
             self._process_if_else()
+            return []
         elif self.token().token_type == TokenType.WORD:
             if self.token().value in self.defines:
-                self._process_macro_usage()
-            else:
-                self.index += 1
-        else:
-            self.index += 1
+                return self._process_macro_usage()
 
-    def _process_defines(self):
+        token = self.token()
+        self.index += 1
+        return [token]
+
+    def _process_directives(self):
+        """
+        Processes all pre-processor directives (except #include) and leaves all other tokens as is.
+        """
         self.index = 0
         while self.index < len(self.tokens):
             self._process_next()
