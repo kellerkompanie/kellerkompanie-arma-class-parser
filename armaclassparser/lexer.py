@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from enum import Enum
 
 STRING_INPUT_FILE = '<STRING>'
@@ -15,6 +16,7 @@ class TokenType(Enum):
     EQUALS = '='
     PLUS = '+'
     MINUS = '-'
+    LONG_MINUS = '−'
     MUL = '*'
     DIV = '/'
     BACKSLASH = '\\'
@@ -51,7 +53,7 @@ class TokenType(Enum):
 
 
 class Token:
-    def __init__(self, token_type, file_path, line_no, line_pos, value=None):
+    def __init__(self, token_type: TokenType, file_path: str, line_no: int, line_pos: int, value=None):
         self.token_type = token_type
         self.file_path = file_path
         self.line_no = line_no
@@ -62,9 +64,11 @@ class Token:
 
     def __repr__(self):
         if self.token_type in [TokenType.WORD, TokenType.NUMBER]:
-            return '<line: %s, pos: %s, %s(%s)>' % (self.line_no, self.line_pos, self.token_type, self.value)
+            return '<line: {}, pos: {}, {}({}), {}>'.format(self.line_no, self.line_pos, self.token_type,
+                                                            repr(self.value), self.file_path)
+
         else:
-            return '<line: %s, pos: %s, %s>' % (self.line_no, self.line_pos, self.token_type)
+            return '<line: {}, pos: {}, {}, {}>'.format(self.line_no, self.line_pos, self.token_type, self.file_path)
 
     def __str__(self):
         if self.token_type in [TokenType.WORD, TokenType.NUMBER]:
@@ -227,7 +231,7 @@ class Lexer:
                     self.add_token(TokenType(next_char))
                     continue
                 else:
-                    raise ValueError('unknown symbol {} encountered in {} at line {}, column {}'.format(next_char,
+                    raise ValueError('unknown symbol {} encountered in {} at line {}, column {}'.format(repr(next_char),
                                                                                                         self.file_name,
                                                                                                         self.line_no,
                                                                                                         self.line_pos))

@@ -2,6 +2,7 @@ import os
 import unittest
 
 import armaclassparser
+from armaclassparser import lexer
 from armaclassparser.lexer import Token, TokenType, Lexer
 
 
@@ -34,7 +35,7 @@ class TestLexer(unittest.TestCase):
         expected = [
             Token(TokenType.KEYWORD_CLASS, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1)
         ]
-        tokens = armaclassparser.parse_from_string(input_data)
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         self.assertEqual(expected, tokens)
 
     def test_class(self):
@@ -48,7 +49,7 @@ class TestLexer(unittest.TestCase):
             Token(TokenType.R_CURLY, armaclassparser.lexer.STRING_INPUT_FILE, 1, 12),
             Token(TokenType.SEMICOLON, armaclassparser.lexer.STRING_INPUT_FILE, 1, 13)
         ]
-        tokens = armaclassparser.parse_from_string(input_data)
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         self.assertEqual(expected, tokens)
 
     def test_include_simple(self):
@@ -56,7 +57,7 @@ class TestLexer(unittest.TestCase):
         expected = [
             Token(TokenType.KEYWORD_INCLUDE, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1)
         ]
-        tokens = armaclassparser.parse_from_string(input_data)
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         self.assertEqual(expected, tokens)
 
     def test_include(self):
@@ -70,7 +71,7 @@ class TestLexer(unittest.TestCase):
             Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 28, "hpp"),
             Token(TokenType.DOUBLE_QUOTES, armaclassparser.lexer.STRING_INPUT_FILE, 1, 31)
         ]
-        tokens = armaclassparser.parse_from_string(input_data)
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         self.assertEqual(expected, tokens)
 
     def test_string_literal1(self):
@@ -78,7 +79,7 @@ class TestLexer(unittest.TestCase):
         expected = [
             Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, 'hello')
         ]
-        tokens = armaclassparser.parse_from_string(input_data)
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         self.assertEqual(expected, tokens)
 
     def test_string_literal2(self):
@@ -88,7 +89,7 @@ class TestLexer(unittest.TestCase):
             Token(TokenType.WHITESPACE, armaclassparser.lexer.STRING_INPUT_FILE, 1, 6),
             Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 7, 'world')
         ]
-        tokens = armaclassparser.parse_from_string(input_data)
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         self.assertEqual(expected, tokens)
 
     def test_string_literal3(self):
@@ -96,7 +97,7 @@ class TestLexer(unittest.TestCase):
         expected = [
             Token(TokenType.WORD, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, 'hello1234!')
         ]
-        tokens = armaclassparser.parse_from_string(input_data)
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         self.assertEqual(expected, tokens)
 
     def test_number_literal1(self):
@@ -104,7 +105,7 @@ class TestLexer(unittest.TestCase):
         expected = [
             Token(TokenType.NUMBER, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, '1234')
         ]
-        tokens = armaclassparser.parse_from_string(input_data)
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         self.assertEqual(expected, tokens)
 
     def test_number_literal2(self):
@@ -112,7 +113,7 @@ class TestLexer(unittest.TestCase):
         expected = [
             Token(TokenType.NUMBER, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, '12.34')
         ]
-        tokens = armaclassparser.parse_from_string(input_data)
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         self.assertEqual(expected, tokens)
 
     def test_number_literal3(self):
@@ -120,7 +121,7 @@ class TestLexer(unittest.TestCase):
         expected = [
             Token(TokenType.NUMBER, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, '-1234')
         ]
-        tokens = armaclassparser.parse_from_string(input_data)
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         self.assertEqual(expected, tokens)
 
     def test_number_literal4(self):
@@ -128,7 +129,7 @@ class TestLexer(unittest.TestCase):
         expected = [
             Token(TokenType.NUMBER, armaclassparser.lexer.STRING_INPUT_FILE, 1, 1, '-12.34')
         ]
-        tokens = armaclassparser.parse_from_string(input_data)
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         self.assertEqual(expected, tokens)
 
     def test_multiline1(self):
@@ -151,15 +152,12 @@ class Foo {};'''
             Token(TokenType.R_CURLY, armaclassparser.lexer.STRING_INPUT_FILE, 2, 12),
             Token(TokenType.SEMICOLON, armaclassparser.lexer.STRING_INPUT_FILE, 2, 13)
         ]
-        tokens = armaclassparser.parse_from_string(input_data)
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         self.assertEqual(expected, tokens)
 
     def test_file_sample01(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         file_path = os.path.join(dir_path, "examples/01_simple_config.cpp")
-        armaclassparser.parse_from_file(file_path)
-
-    def test_file_sample02(self):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        file_path = os.path.join(dir_path, "examples/02_acex_rations_config.cpp")
-        armaclassparser.parse_from_file(file_path)
+        with open(file_path, 'r', encoding='utf-8', newline=None) as fp:
+            input_data = fp.read()
+        Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()

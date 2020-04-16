@@ -2,9 +2,9 @@ import sys
 from parser import ParserError
 from typing import Union
 
-import armaclassparser
 from armaclassparser.ast import StringLiteral, Constant, Identifier, ArrayDeclaration, Assignment, ClassDefinition, \
     Array
+from armaclassparser.errors import ParsingError, MissingTokenError, UnexpectedTokenError
 from armaclassparser.lexer import TokenType, Token
 
 
@@ -31,10 +31,10 @@ class TokenProcessor:
     def expect(self, token_type: Union[TokenType, list]) -> Token:
         if isinstance(token_type, TokenType):
             if self.token().token_type != token_type:
-                raise armaclassparser.UnexpectedTokenError(token_type, self.token())
+                raise UnexpectedTokenError(token_type, self.token())
         elif isinstance(token_type, list):
             if self.token().token_type not in token_type:
-                raise armaclassparser.UnexpectedTokenError(token_type, self.token())
+                raise UnexpectedTokenError(token_type, self.token())
         return self.token()
 
     def expect_next(self, token_type: Union[TokenType, list]) -> Token:
@@ -57,7 +57,7 @@ class Parser(TokenProcessor):
         tokens = [self.token()]
 
         if tokens[0].token_type not in [TokenType.DOUBLE_QUOTES, TokenType.QUOTE]:
-            raise armaclassparser.UnexpectedTokenError([TokenType.DOUBLE_QUOTES, TokenType.QUOTE], tokens[0])
+            raise UnexpectedTokenError([TokenType.DOUBLE_QUOTES, TokenType.QUOTE], tokens[0])
 
         self.index += 1
         while self.index < len(self.tokens):
@@ -70,7 +70,7 @@ class Parser(TokenProcessor):
                 tokens.append(token)
                 self.index += 1
 
-        raise armaclassparser.MissingTokenError(tokens[0].token_type)
+        raise MissingTokenError(tokens[0].token_type)
 
     def _parse_constant(self):
         number_literal_token = self.expect(TokenType.NUMBER)
@@ -115,7 +115,7 @@ class Parser(TokenProcessor):
         elif token.token_type == TokenType.L_CURLY:
             right_side = self._parse_array()
         else:
-            raise armaclassparser.ParsingError('unexpected right side of assignment: {}'.format(token))
+            raise ParsingError('unexpected right side of assignment: {}'.format(token))
 
         semicolon_token = self.expect(TokenType.SEMICOLON)
         self.index += 1
@@ -189,13 +189,13 @@ class Parser(TokenProcessor):
             if self.token().token_type == TokenType.R_CURLY:
                 colon_token = self.next()
                 if colon_token.token_type != TokenType.SEMICOLON:
-                    raise armaclassparser.UnexpectedTokenError(TokenType.SEMICOLON, colon_token)
+                    raise UnexpectedTokenError(TokenType.SEMICOLON, colon_token)
                 self.index += 1
                 return ClassDefinition(class_keyword_token, class_name_token, body, parent_class_token)
             else:
-                raise armaclassparser.MissingTokenError(TokenType.R_CURLY, l_curly_token)
+                raise MissingTokenError(TokenType.R_CURLY, l_curly_token)
         else:
-            raise armaclassparser.UnexpectedTokenError(TokenType.L_CURLY, self.token())
+            raise UnexpectedTokenError(TokenType.L_CURLY, self.token())
 
     def _parse_next(self):
         token = self.token()
@@ -218,9 +218,9 @@ class Parser(TokenProcessor):
             self.index += 1
             return None
         elif token.token_type == TokenType.KEYWORD_INCLUDE:
-            raise armaclassparser.ParsingError('expected includes to be handled by preprocessor')
+            raise ParsingError('expected includes to be handled by preprocessor')
         elif token.token_type in [TokenType.COMMENT, TokenType.MCOMMENT_START, TokenType.MCOMMENT_END]:
-            raise armaclassparser.ParsingError('expected comments to be handled by preprocessor')
+            raise ParsingError('expected comments to be handled by preprocessor')
         else:
             print('WARNING: unknown token:', repr(token), file=sys.stderr)
             self.index += 1

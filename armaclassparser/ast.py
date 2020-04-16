@@ -180,5 +180,5 @@ class ClassDefinition(ASTNode):
     def __str__(self):
         strings = ["class " + self.class_name]
         strings += [self.parent_class.value] if self.parent_class else []
-        strings += [" {\n", str(self.body), "\n};"]
+        strings += [" {\n", str(self.body) if self.body else "", "};"]
         return ''.join(strings)

@@ -7,6 +7,13 @@ from armaclassparser.preprocessor import PreProcessor
 
 
 class TestPreProcessor(unittest.TestCase):
+    def _test_preprocessor(self, input_data, expected_output):
+        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
+        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
+        preprocessor.preprocess()
+        output = generator.from_tokens(preprocessor.tokens)
+        self.assertEqual(expected_output, output)
+
     def test_remove_single_line_comment1(self):
         input_data = '''#include "script_component.hpp" // Hello World
 class Foo {};'''
@@ -143,38 +150,38 @@ class Foo {};'''
     def test_include1(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         file_path = os.path.join(dir_path, "examples/include/01_include_test_config.cpp")
-        with open(file_path, 'r') as fp:
+        with open(file_path, 'r', encoding='utf-8', newline=None) as fp:
             input_data = fp.read()
         tokens = Lexer(input_data, file_path).tokenize()
         preprocessor = PreProcessor(tokens, file_path)
-        preprocessor._replace_includes(recursive=False)
+        preprocessor.preprocess()
         tokens = preprocessor.tokens
         output = generator.from_tokens(tokens)
 
-        expected_output = """#define TEST_FILE1_1 01_include_test_file1_line1
-#define TEST_FILE1_2 01_include_test_file1_line2
-#define TEST_FILE1_3 01_include_test_file1_line3
+        expected_output = """1_include_test_file1_line1
+1_include_test_file1_line2
+1_include_test_file1_line3
 
-#define TEST_FILE2_1 01_include_test_file2_line1
-#define TEST_FILE2_2 01_include_test_file2_line2
-#define TEST_FILE2_3 01_include_test_file2_line3
+1_include_test_file2_line1
+1_include_test_file2_line2
+1_include_test_file2_line3
 class Foo {};
-#define TEST_FILE3_1 01_include_test_file3_line1
-#define TEST_FILE3_2 01_include_test_file3_line2
-#define TEST_FILE3_3 01_include_test_file3_line3"""
+1_include_test_file3_line1
+1_include_test_file3_line2
+1_include_test_file3_line3"""
 
         self.assertEqual(expected_output, output)
 
     def test_include2(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         file_path = os.path.join(dir_path, "examples/include/02_include_test_config.cpp")
-        with open(file_path, 'r') as fp:
+        with open(file_path, 'r', encoding='utf-8', newline=None) as fp:
             input_data = fp.read()
         tokens = Lexer(input_data, file_path).tokenize()
         preprocessor = PreProcessor(tokens, file_path)
-        preprocessor._replace_includes(recursive=False)
+        preprocessor.preprocess()
         output = generator.from_tokens(preprocessor.tokens)
-        expected_output = "#define TEST test"
+        expected_output = "\ntest"
         self.assertEqual(expected_output, output)
 
     def test_escaped_newlines(self):
@@ -224,10 +231,6 @@ class CfgPatches {
         value = IDC_STAMINA_BAR+GRAVITY;
     };
 };"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        tokens = preprocessor.preprocess()
-        output = generator.from_tokens(tokens)
         expected_output = """
 
 
@@ -253,7 +256,7 @@ class CfgPatches {
     };
 };"""
 
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)
 
     def test_ifdef1(self):
         input_data = """#define TEST
@@ -263,12 +266,8 @@ class CfgPatches {
 #define A b
 #endif
 class A {};"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        preprocessor.preprocess()
-        output = generator.from_tokens(preprocessor.tokens)
         expected_output = "class a {};"
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)
 
     def test_ifndef1(self):
         input_data = """#define TEST
@@ -278,52 +277,32 @@ class A {};"""
 #define A b
 #endif
 class A {};"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        preprocessor.preprocess()
-        output = generator.from_tokens(preprocessor.tokens)
         expected_output = "class b {};"
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)
 
     def test_macro_usage1(self):
         input_data = """#define TEST test
 class TEST {};"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        preprocessor.preprocess()
-        output = generator.from_tokens(preprocessor.tokens)
         expected_output = "class test {};"
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)
 
     def test_macro_usage2(self):
         input_data = """#define TEST author = "Schwaggot";
 class test {TEST};"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        preprocessor.preprocess()
-        output = generator.from_tokens(preprocessor.tokens)
         expected_output = 'class test {author = "Schwaggot";};'
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)
 
     def test_macro_with_args1(self):
         input_data = """#define EXP(x) x * x
 class test {value = EXP(2);};"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        preprocessor.preprocess()
-        output = generator.from_tokens(preprocessor.tokens)
         expected_output = 'class test {value = 2 * 2;};'
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)
 
     def test_macro_with_args2(self):
         input_data = """#define MUL(x,y) x * y
 class test {value = MUL(2,3);};"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        preprocessor.preprocess()
-        output = generator.from_tokens(preprocessor.tokens)
         expected_output = 'class test {value = 2 * 3;};'
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)
 
     def test_macro_with_args3(self):
         input_data = """#define ARR_1(x) {x}
@@ -334,16 +313,12 @@ class test {
     arr2[] = ARR_2("hello", 1234, 13.45);
     arr3[] = ARR_3(test, {12, 14});    
 };"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        preprocessor.preprocess()
-        output = generator.from_tokens(preprocessor.tokens)
         expected_output = """class test {
     arr1[] = {1234};
     arr2[] = {"hello", 1234, 13.45};
     arr3[] = {test, {12, 14}};    
 };"""
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)
 
     def test_macro_with_args4(self):
         input_data = """#define ARR_1(x) {x}
@@ -351,69 +326,45 @@ class test {
 class test {
     arr[] = ARR_1(1234)+ARR_2("hello", 1234, 13.45);
 };"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        preprocessor.preprocess()
-        output = generator.from_tokens(preprocessor.tokens)
         expected_output = """class test {
     arr[] = {1234}+{"hello", 1234, 13.45};
 };"""
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)
 
     def test_double(self):
         input_data = """#define DOUBLES(var1,var2) var1##_##var2
 DOUBLES(acex,main)"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        preprocessor.preprocess()
-        output = generator.from_tokens(preprocessor.tokens)
         expected_output = "acex_main"
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)
 
     def test_nested1(self):
         input_data = """#define TEST test
 #define A(x) a_##x##_##TEST
 A(b)"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        preprocessor.preprocess()
-        output = generator.from_tokens(preprocessor.tokens)
         expected_output = "a_b_test"
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)
 
     def test_nested2(self):
         input_data = """#define PI 3.14
 #define A(x) x*PI
 A(b)"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        preprocessor.preprocess()
-        output = generator.from_tokens(preprocessor.tokens)
         expected_output = "b*3.14"
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)
 
     def test_nested3(self):
         input_data = """#define A(x) a_##x
 #define B(x) b_##x
 #define AB(x) A(B(x))
 AB(y)"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        preprocessor.preprocess()
-        output = generator.from_tokens(preprocessor.tokens)
         expected_output = "a_b_y"
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)
 
     def test_nested4(self):
         input_data = """#define A(x) a_##x
 #define B(x) b_##x
 A(B(y))"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        preprocessor.preprocess()
-        output = generator.from_tokens(preprocessor.tokens)
         expected_output = "a_b_y"
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)
 
     def test_nested5(self):
         input_data = """#define A(x) a_##x
@@ -421,12 +372,8 @@ A(B(y))"""
 #define C(x) c_##x
 #define ABC(x) A(B(C(x)))
 ABC(y)"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        preprocessor.preprocess()
-        output = generator.from_tokens(preprocessor.tokens)
         expected_output = "a_b_c_y"
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)
 
     def test_compile_file(self):
         input_data = """#define DOUBLES(var1,var2) var1##_##var2
@@ -440,19 +387,11 @@ ABC(y)"""
 #define COMPILE_FILE_CFG_SYS(var1,var2,var3) COMPILE_FILE2_CFG_SYS('PATHTO_SYS(var1,var2,var3)')
 #define COMPILE_FILE(var1) COMPILE_FILE_SYS(acex,rations,var1)
 QUOTE(COMPILE_FILE(x))"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        preprocessor.preprocess()
-        output = generator.from_tokens(preprocessor.tokens)
         expected_output = '"compile preprocessFileLineNumbers \'\\x\\acex\\addons\\rations\\x.sqf\'"'
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)
 
     def test_quote(self):
         input_data = """#define QUOTE(var) #var
 QUOTE(hello world)"""
-        tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        preprocessor = PreProcessor(tokens, lexer.STRING_INPUT_FILE)
-        preprocessor.preprocess()
-        output = generator.from_tokens(preprocessor.tokens)
         expected_output = '"hello world"'
-        self.assertEqual(expected_output, output)
+        self._test_preprocessor(input_data, expected_output)

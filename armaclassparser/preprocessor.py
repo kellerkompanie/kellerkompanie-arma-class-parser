@@ -1,9 +1,8 @@
 import os
 import sys
 
-import armaclassparser
-from armaclassparser import MissingTokenError
-from armaclassparser.lexer import TokenType, Token
+from armaclassparser.errors import UnexpectedTokenError, PreProcessingError, MissingTokenError
+from armaclassparser.lexer import TokenType, Token, Lexer
 from armaclassparser.parser import TokenProcessor
 
 
@@ -19,11 +18,15 @@ class Define:
 
 class PreProcessor(TokenProcessor):
     def __init__(self, tokens, file_path):
+        """
+        :param tokens:
+        :param file_path:
+        """
         TokenProcessor.__init__(self, tokens)
         self.file_path = file_path
         self.defines = {}
 
-    def preprocess(self, process_directives=True) -> list:
+    def preprocess(self) -> list:
         """
         Runs the pre-processor on the input:
             1. removes comments (multi-line + single line)
@@ -31,16 +34,12 @@ class PreProcessor(TokenProcessor):
             3. removes escaped newlines
             4. processes directives (#define,...) and macro usages
 
-        :param process_directives: bool - if True process the directives (#define, ...) and macros, mainly for testing
         :return: list of tokens - the input after pre-processing
         """
         self._remove_comments()
-        self._replace_includes(process_defines=process_directives)
+        self._replace_includes()
         self._remove_escaped_newlines()
-
-        # makes testing easier
-        if process_directives:
-            self._process_directives()
+        self._process_directives()
 
         return self.tokens
 
@@ -67,7 +66,7 @@ class PreProcessor(TokenProcessor):
                 path_on_p_drive = os.path.join('P:', include_file_path)
                 if not os.path.isfile(path_on_p_drive):
                     msg = 'could not resolve absolute include "{}" in file {}'.format(include_file_path, self.file_path)
-                    raise armaclassparser.PreProcessingError(msg)
+                    raise PreProcessingError(msg)
                 return path_on_p_drive
         else:
             # relative file path, e.g., 'script_component.hpp'
@@ -76,7 +75,7 @@ class PreProcessor(TokenProcessor):
             dst_file_path = os.path.join(current_absolute_directory, include_file_path)
             if not os.path.isfile(dst_file_path):
                 msg = 'could not resolve relative include {} in file {}'.format(dst_file_path, self.file_path)
-                raise armaclassparser.PreProcessingError(msg)
+                raise PreProcessingError(msg)
             return dst_file_path
 
     def _parse_include_file_path(self) -> str:
@@ -88,7 +87,7 @@ class PreProcessor(TokenProcessor):
         tokens = [self.token()]
 
         if tokens[0].token_type not in [TokenType.DOUBLE_QUOTES, TokenType.LESS]:
-            raise armaclassparser.UnexpectedTokenError([TokenType.DOUBLE_QUOTES, TokenType.LESS], tokens[0])
+            raise UnexpectedTokenError([TokenType.DOUBLE_QUOTES, TokenType.LESS], tokens[0])
 
         self.index += 1
         while self.index < len(self.tokens):
@@ -101,14 +100,11 @@ class PreProcessor(TokenProcessor):
                 tokens.append(token)
                 self.index += 1
 
-        raise armaclassparser.MissingTokenError(tokens[0].token_type)
+        raise MissingTokenError(tokens[0].token_type)
 
-    def _replace_includes(self, recursive=True, process_defines=True):
+    def _replace_includes(self):
         """
         Processes #include directives by parsing the included file and inserting it contents in place of the #include.
-
-        :param recursive: bool - if True (default) it will pre-process the included file, mainly used for testing.
-        :param process_defines: bool - if True (default) it will pre-process the #defines etc. in the included file.
         """
         self.index = 0
         while self.index < len(self.tokens):
@@ -123,22 +119,22 @@ class PreProcessor(TokenProcessor):
 
                 # recursively process the file to be included
                 dst_file_path = self._resolve_include_file_path(include_file_path)
-                tokens = armaclassparser.parse_from_file(dst_file_path)
+                with open(dst_file_path, 'r', encoding='utf-8', newline=None) as fp:
+                    input_data = fp.read()
+                tokens = Lexer(input_data, dst_file_path).tokenize()
 
-                # added to make testing easier
-                if recursive:
-                    preprocessor = PreProcessor(tokens, dst_file_path)
-                    preprocessor.defines = self.defines
-                    tokens = preprocessor.preprocess(process_directives=process_defines)
+                preprocessor = PreProcessor(tokens, dst_file_path)
+                preprocessor.defines = self.defines
+                tokens = preprocessor.preprocess()
 
                 # replace include statement with included content
                 del self.tokens[include_start:include_end]
-                self.tokens = self.tokens[0:include_start] + tokens + self.tokens[include_start:]
+                self.tokens = self.tokens[:include_start] + tokens + self.tokens[include_start:]
                 self.index += len(tokens) - (include_end - include_start)
 
             elif token.token_type in [TokenType.COMMENT, TokenType.MCOMMENT_START, TokenType.MCOMMENT_END]:
                 msg = 'expected comments to have been handled already, but found {}'.format(repr(token))
-                raise armaclassparser.PreProcessingError(msg)
+                raise PreProcessingError(msg)
             else:
                 self.index += 1
 
@@ -228,17 +224,17 @@ class PreProcessor(TokenProcessor):
                     self.next()
                     break
                 else:
-                    raise armaclassparser.PreProcessingError(
+                    raise PreProcessingError(
                         'unexpected token while parsing args of #define: {}'.format(next_token))
 
         self.skip_whitespaces()
 
         # parse right side
         right_side = []
-        while self.token().token_type != TokenType.NEWLINE and self.has_next():
+        while self.index < len(self.tokens) and self.token().token_type != TokenType.NEWLINE:
             if self.token().token_type != TokenType.DOUBLE_HASH:
                 right_side.append(self.token())
-            self.next()
+            self.index += 1
 
         # map the new define for later
         if macro_name in self.defines:
@@ -284,7 +280,7 @@ class PreProcessor(TokenProcessor):
             del self.tokens[self.index]
 
         if self.index == len(self.tokens):
-            raise armaclassparser.PreProcessingError('reached EOF while skipping until {}'.format(break_tokens))
+            raise PreProcessingError('reached EOF while skipping until {}'.format(break_tokens))
 
         self.expect(break_tokens)
 
@@ -298,7 +294,7 @@ class PreProcessor(TokenProcessor):
             self._process_next()
 
         if self.index == len(self.tokens) - 1:
-            raise armaclassparser.PreProcessingError('reached EOF while processing until {}'.format(break_tokens))
+            raise PreProcessingError('reached EOF while processing until {}'.format(break_tokens))
 
         self.expect(break_tokens)
 
@@ -342,7 +338,8 @@ class PreProcessor(TokenProcessor):
         """
         Takes a macro in form of tokens and expands it based on the current defines.
 
-        :param tokens: list of tokens - the input macro, must be entire macro including parenthesis, e.g., "EGVAR(main,variable)"
+        :param tokens: list of tokens - the input macro, must be entire macro including parenthesis,
+                                        e.g., "EGVAR(main,variable)"
         :return: list of tokens - the macro after expansion
         """
         # macros can be nested, so treat the macro as self-sustained unit that has to be processed
@@ -374,7 +371,7 @@ class PreProcessor(TokenProcessor):
             macro_processor.expect(TokenType.R_ROUND)
 
             # right side can be nested, so process it as an independent unit
-            right_side_processor = PreProcessor(define.right_side.copy(), '<MACRO>')
+            right_side_processor = PreProcessor(define.right_side.copy(), file_path='<MACRO>')
             right_side_processor.defines = self.defines
             for key, value in arg_values.items():
                 # little trick: we treat all of the previously parsed arguments
@@ -386,7 +383,7 @@ class PreProcessor(TokenProcessor):
 
         else:
             # simple macro, just return processed right side
-            right_side_processor = PreProcessor(define.right_side.copy(), '<MACRO>')
+            right_side_processor = PreProcessor(define.right_side.copy(), file_path='<MACRO>')
             right_side_processor.defines = self.defines
             right_side_processor._process_directives()
             replacement = right_side_processor.tokens
