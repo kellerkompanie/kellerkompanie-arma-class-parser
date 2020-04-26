@@ -49,5 +49,5 @@ class TestGenerator(unittest.TestCase):
 
         input_data = "class Foo {};"
         expected_output = """class Foo {
-};"""
+};\n"""
         self._test_generator_ast(input_data, expected_output)
