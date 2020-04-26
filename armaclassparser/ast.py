@@ -11,6 +11,7 @@ class ASTNodeType(Enum):
     ARRAY_DECLARATION = 'ARRAY_DECLARATION'
     INCLUDE_STATEMENT = 'INCLUDE_STATEMENT'
     CLASS_DEFINITION = 'CLASS_DEFINITION'
+    EXTERNAL_CLASS_REFERENCE = 'EXTERNAL_CLASS_REFERENCE'
 
 
 class ASTNode:
@@ -80,7 +81,7 @@ class Identifier(ASTNode):
         self.value = name_token.value
 
     def __str__(self):
-        return '"{}"'.format(self.value)
+        return '{}'.format(self.value)
 
 
 class ArrayDeclaration(ASTNode):
@@ -102,7 +103,7 @@ class ArrayDeclaration(ASTNode):
         self.identifier = identifier
 
     def __str__(self):
-        return '"{}"'.format(self.identifier.value)
+        return '{}[]'.format(self.identifier.value)
 
 
 class Array(ASTNode):
@@ -155,7 +156,7 @@ class Assignment(ASTNode):
         self.right = right
 
     def __str__(self):
-        return '{} = {};'.format(self.left, self.right)
+        return '{} = {};\n'.format(self.left, self.right)
 
 
 class IncludeStatement(ASTNode):
@@ -179,6 +180,21 @@ class ClassDefinition(ASTNode):
 
     def __str__(self):
         strings = ["class " + self.class_name]
-        strings += [self.parent_class.value] if self.parent_class else []
-        strings += [" {\n", str(self.body) if self.body else "", "};"]
+        strings += [self.parent_class] if self.parent_class else []
+        strings += [" {\n"]
+        for child in self.body:
+            strings.append(str(child))
+        strings += ["};\n"]
+        return ''.join(strings)
+
+
+class ExternalClassReference(ASTNode):
+    def __init__(self, class_keyword_token: Token, class_name_token: Token):
+        tokens = [class_keyword_token, class_name_token]
+        ASTNode.__init__(self, ASTNodeType.EXTERNAL_CLASS_REFERENCE, tokens, class_keyword_token.line_no,
+                         class_keyword_token.line_pos)
+        self.class_name = class_name_token.value
+
+    def __str__(self):
+        strings = ["class ", self.class_name, ";\n"]
         return ''.join(strings)

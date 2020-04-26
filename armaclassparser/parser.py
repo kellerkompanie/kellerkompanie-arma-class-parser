@@ -103,7 +103,7 @@ class Parser(TokenProcessor):
                 'unexpected left side of assignment, expected Identifier or ArrayDeclaration, but got {}'.format(
                     repr(left_side)))
 
-        self.skip_whitespaces()
+        self.skip_whitespaces(include_newlines=True)
         token = self.token()
 
         if token.token_type == TokenType.WORD:
@@ -115,7 +115,7 @@ class Parser(TokenProcessor):
         elif token.token_type == TokenType.L_CURLY:
             right_side = self._parse_array()
         else:
-            raise ParsingError('unexpected right side of assignment: {}'.format(token))
+            raise ParsingError('unexpected right side of assignment: {}'.format(repr(token)))
 
         semicolon_token = self.expect(TokenType.SEMICOLON)
         self.index += 1
@@ -161,7 +161,7 @@ class Parser(TokenProcessor):
 
         class_name_token = self.expect(TokenType.WORD)
         self.next()
-        self.skip_whitespaces()
+        self.skip_whitespaces(include_newlines=True)
 
         token = self.token()
         parent_class_token = None
@@ -170,7 +170,7 @@ class Parser(TokenProcessor):
             self.skip_whitespaces()
             parent_class_token = self.token()
             self.next()
-            self.skip_whitespaces()
+            self.skip_whitespaces(include_newlines=True)
 
         if self.token().token_type == TokenType.L_CURLY:
             l_curly_token = self.token()
@@ -194,6 +194,9 @@ class Parser(TokenProcessor):
                 return ClassDefinition(class_keyword_token, class_name_token, body, parent_class_token)
             else:
                 raise MissingTokenError(TokenType.R_CURLY, l_curly_token)
+        elif self.token().token_type == TokenType.SEMICOLON:
+            # TODO implement external class reference
+            pass
         else:
             raise UnexpectedTokenError(TokenType.L_CURLY, self.token())
 
