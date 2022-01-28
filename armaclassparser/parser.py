@@ -3,7 +3,7 @@ from parser import ParserError
 from typing import Union
 
 from armaclassparser.ast import StringLiteral, Constant, Identifier, ArrayDeclaration, Assignment, ClassDefinition, \
-    Array
+    Array, ExternalClassReference
 from armaclassparser.errors import ParsingError, MissingTokenError, UnexpectedTokenError
 from armaclassparser.lexer import TokenType, Token
 
@@ -49,9 +49,10 @@ class TokenProcessor:
 
 
 class Parser(TokenProcessor):
-    def __init__(self, tokens):
+    def __init__(self, tokens, file_name):
         TokenProcessor.__init__(self, tokens)
         self.stack = []
+        self.file_name = file_name
 
     def _parse_string_literal(self):
         tokens = [self.token()]
@@ -195,8 +196,8 @@ class Parser(TokenProcessor):
             else:
                 raise MissingTokenError(TokenType.R_CURLY, l_curly_token)
         elif self.token().token_type == TokenType.SEMICOLON:
-            # TODO implement external class reference
-            pass
+            self.index += 1
+            return ExternalClassReference(class_keyword_token, class_name_token)
         else:
             raise UnexpectedTokenError(TokenType.L_CURLY, self.token())
 
@@ -218,6 +219,18 @@ class Parser(TokenProcessor):
         elif token.token_type == TokenType.EQUALS:
             return self._parse_assignment()
         elif token.token_type in [TokenType.WHITESPACE, TokenType.TAB, TokenType.NEWLINE]:
+            self.index += 1
+            return None
+        elif token.token_type == TokenType.KEYWORD_EXEC:
+            self.expect_next(TokenType.L_ROUND)
+            unclosed_l_rounds = 1
+            while unclosed_l_rounds > 0:
+                token = self.next()
+                if token.token_type == TokenType.L_ROUND:
+                    unclosed_l_rounds += 1
+                elif token.token_type == TokenType.R_ROUND:
+                    unclosed_l_rounds -= 1
+            # stopped at closing ), now skip to next
             self.index += 1
             return None
         elif token.token_type == TokenType.KEYWORD_INCLUDE:

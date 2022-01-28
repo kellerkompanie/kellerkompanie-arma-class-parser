@@ -161,3 +161,25 @@ class Foo {};'''
         with open(file_path, 'r', encoding='utf-8', newline=None) as fp:
             input_data = fp.read()
         Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
+
+    def test_keyword_exec(self):
+        input_data = r"""__EXEC(\
+_fnc_sizeEx = {\
+    _pixelScale = 20 * pixelScale;\
+    _size = _this select 0;\
+    _size = _size * _pixelScale;\
+    _coef = _this select 1;\
+    _sizes = _this select 2;\
+    _sizeEx = _sizes select 0;\
+    {\
+        _xSize = _x * _coef;\
+        _cond = _xSize < _size;\
+        if _cond then {_sizeEx = _xSize;};\
+    } foreach _sizes;\
+    _sizeEx = _sizeEx / _pixelScale;\
+    _bracketL = tostring [40];\
+    _bracketR = tostring [41];\
+    _pixelH = _bracketL + "1 / " + _bracketL + "getResolution select 3" + _bracketR + _bracketR;\
+    str _sizeEx + " * " + _pixelH + " * pixelGrid * " + str pixelScale\
+};"""
+        Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()

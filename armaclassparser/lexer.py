@@ -40,6 +40,7 @@ class TokenType(Enum):
     AND = '&'
     PERCENT = '%'
     QUESTION = '?'
+    VERTICAL_BAR = '|'
     KEYWORD_CLASS = 'class'
     KEYWORD_INCLUDE = '#include'
     KEYWORD_IFDEF = '#ifdef'
@@ -48,6 +49,7 @@ class TokenType(Enum):
     KEYWORD_ENDIF = '#endif'
     KEYWORD_DEFINE = '#define'
     KEYWORD_UNDEF = '#undef'
+    KEYWORD_EXEC = '__EXEC'
     WORD = 'WORD'
     NUMBER = 'NUMBER'
 
@@ -199,6 +201,15 @@ class Lexer:
                 else:
                     # case: /
                     self.add_token(TokenType.DIV)
+
+            elif next_char == '_':
+                peeked_chars = self.peek(5)
+                if peeked_chars == '_EXEC':
+                    for i in range(0, 5):
+                        self.next()
+                    self.add_token(TokenType.KEYWORD_EXEC)
+                else:
+                    self.add_token(TokenType.UNDERSCORE)
 
             elif next_char.isdecimal():
                 # parse number

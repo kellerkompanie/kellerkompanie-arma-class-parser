@@ -11,7 +11,7 @@ def parse_from_file(file_path: str, pre_process=True):
         pre_processor = preprocessor.PreProcessor(tokens, file_path)
         tokens = pre_processor.preprocess()
 
-    p = parser.Parser(tokens)
+    p = parser.Parser(tokens, file_path)
     ast = p.parse()
 
     return ast
@@ -24,7 +24,7 @@ def parse_from_string(input_data: str, pre_process=True):
         pre_processor = preprocessor.PreProcessor(tokens, lexer.STRING_INPUT_FILE)
         tokens = pre_processor.preprocess()
 
-    p = parser.Parser(tokens)
+    p = parser.Parser(tokens, lexer.STRING_INPUT_FILE)
     ast = p.parse()
 
     return ast

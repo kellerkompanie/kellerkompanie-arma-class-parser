@@ -331,8 +331,8 @@ class PreProcessor(TokenProcessor):
 
         # #endif was reached in any case, ignore and delete including newline
         del self.tokens[self.index]
-        self.expect(TokenType.NEWLINE)
-        del self.tokens[self.index]
+        while self.token().token_type in [TokenType.NEWLINE, TokenType.TAB, TokenType.NEWLINE]:
+            del self.tokens[self.index]
 
     def _expand_macro(self, tokens):
         """

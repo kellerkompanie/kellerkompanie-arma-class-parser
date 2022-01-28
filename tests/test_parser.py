@@ -14,7 +14,7 @@ class TestParser(unittest.TestCase):
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         self.assertEqual(1, len(tokens))
 
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         ast = parser.parse()
         self.assertEqual(1, len(ast))
 
@@ -27,7 +27,7 @@ class TestParser(unittest.TestCase):
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         self.assertEqual(1, len(tokens))
 
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         ast = parser.parse()
         self.assertEqual(1, len(ast))
 
@@ -40,7 +40,7 @@ class TestParser(unittest.TestCase):
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
         self.assertEqual(1, len(tokens))
 
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         ast = parser.parse()
         self.assertEqual(1, len(ast))
 
@@ -51,7 +51,7 @@ class TestParser(unittest.TestCase):
     def test_assignment1(self):
         input_data = "a = 1337;"
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         ast = parser.parse()
         self.assertEqual(1, len(ast))
 
@@ -69,7 +69,7 @@ class TestParser(unittest.TestCase):
     def test_assignment2(self):
         input_data = "a=1337;"
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         ast = parser.parse()
         self.assertEqual(1, len(ast))
 
@@ -87,7 +87,7 @@ class TestParser(unittest.TestCase):
     def test_assignment3(self):
         input_data = "a = 'Hello';"
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         ast = parser.parse()
         self.assertEqual(1, len(ast))
 
@@ -109,7 +109,7 @@ class TestParser(unittest.TestCase):
     def test_assignment4(self):
         input_data = 'author = "Schwaggot";'
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         ast = parser.parse()
         self.assertEqual(1, len(ast))
 
@@ -128,11 +128,10 @@ class TestParser(unittest.TestCase):
         assignment = Assignment(left_ast, equals_token, right_ast, semicolon_token)
         self.assertEqual([assignment], ast)
 
-
     def test_array_declaration1(self):
         input_data = "array[]"
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         ast = parser.parse()
         self.assertEqual(1, len(ast))
 
@@ -148,7 +147,7 @@ class TestParser(unittest.TestCase):
     def test_array_empty(self):
         input_data = "{}"
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         ast = parser.parse()
         self.assertEqual(1, len(ast))
 
@@ -162,7 +161,7 @@ class TestParser(unittest.TestCase):
     def test_array_simple1(self):
         input_data = "{1}"
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         ast = parser.parse()
         self.assertEqual(1, len(ast))
 
@@ -178,7 +177,7 @@ class TestParser(unittest.TestCase):
     def test_array_simple2(self):
         input_data = "{ 1 }"
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         ast = parser.parse()
         self.assertEqual(1, len(ast))
 
@@ -194,7 +193,7 @@ class TestParser(unittest.TestCase):
     def test_array_simple3(self):
         input_data = "{1,2,3}"
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         ast = parser.parse()
         self.assertEqual(1, len(ast))
 
@@ -214,7 +213,7 @@ class TestParser(unittest.TestCase):
     def test_array_simple4(self):
         input_data = "{1, 2,3}"
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         ast = parser.parse()
         self.assertEqual(1, len(ast))
 
@@ -234,7 +233,7 @@ class TestParser(unittest.TestCase):
     def test_array_simple5(self):
         input_data = "array[] = {};"
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         ast = parser.parse()
         self.assertEqual(1, len(ast))
 
@@ -259,7 +258,7 @@ class TestParser(unittest.TestCase):
     def test_array_mixed1(self):
         input_data = '{1, "hello"}'
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         ast = parser.parse()
         self.assertEqual(1, len(ast))
 
@@ -279,7 +278,7 @@ class TestParser(unittest.TestCase):
     def test_array_mixed2(self):
         input_data = '{1, "hello", {}}'
         tokens = Lexer(input_data, lexer.STRING_INPUT_FILE).tokenize()
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         ast = parser.parse()
         self.assertEqual(1, len(ast))
 
@@ -305,5 +304,5 @@ class TestParser(unittest.TestCase):
         with open(file_path, 'r') as fp:
             input_data = fp.read()
         tokens = Lexer(input_data, file_path).tokenize()
-        parser = Parser(tokens)
+        parser = Parser(tokens, lexer.STRING_INPUT_FILE)
         parser.parse()
